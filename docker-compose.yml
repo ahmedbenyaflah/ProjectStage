@@ -1,0 +1,55 @@
+services:
+  es-logs:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: es-logs
+    hostname: es-logs
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx3g
+      #- bootstrap.memory_lock=true
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana-logs
+    hostname: kibana-logs
+    depends_on:
+      - es-logs
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-logs:9200
+      - SERVER_NAME=kibana-logs
+      
+      # 🔓 Unlock Kibana features (Lens, saved objects, reporting…)
+      - xpack.security.enabled=false
+      - xpack.encryptedSavedObjects.encryptionKey=89d43375534e01765d616414ea3063c7
+      - xpack.reporting.encryptionKey=63937a9904a12e474353424197edd28e
+      - xpack.security.encryptionKey=d52adaca593fe0608775d1c75545a8ee
+
+    ports:
+      - "5601:5601"
+
+  postgres:
+    image: postgres:16
+    container_name: pg-logs
+    environment:
+      POSTGRES_DB: cg_logs
+      POSTGRES_USER: cg_user
+      POSTGRES_PASSWORD: cg_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  esdata:
+  pgdata:

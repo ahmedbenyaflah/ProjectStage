@@ -45,8 +45,8 @@ async def init_es():
                 "properties": {
                     "ip": {"type": "ip"},
                     "blacklist": {"type": "keyword"},
-                    "status": {"type": "keyword"},
-                    "@timestamp": {"type": "date"}
+                    "dnsb_status": {"type": "keyword"},
+                    "@timestamp": {"type": "date"},
                 }
             }
         }
@@ -61,17 +61,17 @@ def check_ip_on_bl(ip, bl, timestamp):
     doc = {
         "ip": ip,
         "blacklist": bl,
-        "status": "CLEAN",
-        "@timestamp": timestamp
+        "dnsb_status": "CLEAN",
+        "@timestamp": timestamp,
     }
-    
+
     try:
         dns.resolver.resolve(query, 'A')
-        doc["status"] = "LISTED"
+        doc["dnsb_status"] = "LISTED"
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         pass
     except Exception:
-        doc["status"] = "ERROR"
+        doc["dnsb_status"] = "ERROR"
 
     es.index(index=INDEX_NAME, document=doc)
     return doc
@@ -129,7 +129,7 @@ def run_full_scan():
         futures = [executor.submit(check_ip_on_bl, ip, bl, timestamp) for ip in HOSTS for bl in DNSBLS]
         results = [f.result() for f in futures]
 
-    listed = [r for r in results if r["status"] == "LISTED"]
+    listed = [r for r in results if r["dnsb_status"] == "LISTED"]
     if listed:
         send_alert(listed)
     print(f"🏁 Scan complete. {len(listed)} issues found.")

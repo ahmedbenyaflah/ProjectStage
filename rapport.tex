@@ -1,0 +1,1884 @@
+% !TEX program = pdflatex
+% Compile order: pdflatex -> biber -> pdflatex -> pdflatex
+% MiKTeX: update all packages before first compile.
+% If \abx@aux@refcontext errors appear, delete .aux .bcf .bbl .blg .run.xml then recompile.
+
+\documentclass[12pt,a4paper,oneside]{report}
+
+% ============================================================
+% Packages
+% ============================================================
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=3cm,right=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{colortbl}
+\usepackage{url}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{csquotes}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usetikzlibrary{shapes.geometric,shapes.multipart,arrows.meta,positioning,calc,fit,decorations.pathreplacing}
+
+% Bibliography (IEEE style, biber backend)
+\usepackage[backend=biber,style=ieee,sorting=nyt]{biblatex}
+
+% hyperref last (after biblatex)
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!50!black,
+  pdftitle={SMTP Log Investigation Platform -- CG Mail Journey \& Log Intelligence System},
+  pdfauthor={Ahmed},
+  pdfsubject={End-of-Study Internship Report -- Orange Tunisia},
+  pdfkeywords={SMTP, Elasticsearch, FastAPI, React, log analysis, mail journey, DNSBL, Orange Tunisia}
+}
+
+% ============================================================
+% Spacing
+% ============================================================
+\onehalfspacing
+
+% ============================================================
+% Colors
+% ============================================================
+\definecolor{OrangeMain}{RGB}{255,121,0}
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codeframe}{RGB}{210,210,210}
+\definecolor{codetxt}{RGB}{25,25,25}
+\definecolor{codekw}{RGB}{0,90,200}
+\definecolor{codestr}{RGB}{163,21,21}
+\definecolor{codecom}{RGB}{0,120,0}
+\definecolor{rowgray}{RGB}{245,245,245}
+
+% ============================================================
+% Headers / footers
+% ============================================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{SMTP Log Investigation Platform}}
+\fancyhead[R]{\small\nouppercase{\leftmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.0pt}
+
+% ============================================================
+% Chapter / section formatting
+% ============================================================
+\titleformat{\chapter}[display]{\bfseries\Large\color{OrangeMain}}{\chaptertitlename\ \thechapter}{10pt}{\Huge}[\vspace{2pt}\rule{\textwidth}{1.5pt}]
+\titleformat{\section}[hang]{\bfseries\Large}{\thesection}{0.8em}{}
+\titleformat{\subsection}[hang]{\bfseries\large}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}[hang]{\bfseries\normalsize}{\thesubsubsection}{0.8em}{}
+\titlespacing*{\chapter}{0pt}{20pt}{30pt}
+
+% ============================================================
+% List spacing
+% ============================================================
+\setlist[itemize]{topsep=4pt,itemsep=2pt,parsep=0pt,partopsep=0pt}
+\setlist[enumerate]{topsep=4pt,itemsep=2pt,parsep=0pt,partopsep=0pt}
+
+% ============================================================
+% Code listings
+% ============================================================
+\lstdefinestyle{reportcode}{
+  backgroundcolor=\color{codebg},
+  frame=single,rulecolor=\color{codeframe},
+  basicstyle=\ttfamily\small\color{codetxt},
+  keywordstyle=\bfseries\color{codekw},
+  stringstyle=\color{codestr},
+  commentstyle=\itshape\color{codecom},
+  showstringspaces=false,
+  breaklines=true,breakatwhitespace=true,
+  tabsize=2,numbers=left,
+  numberstyle=\tiny\color{black!45},
+  xleftmargin=2em,framexleftmargin=1.5em,
+  captionpos=b
+}
+\lstdefinelanguage{json}{
+  morestring=[b]",showstringspaces=false,
+  morecomment=[l]{//},morecomment=[s]{/*}{*/},
+  morekeywords={true,false,null}
+}
+
+% ============================================================
+% Metadata commands (edit here)
+% ============================================================
+\newcommand{\ReportTitle}{SMTP Log Investigation Platform}
+\newcommand{\ReportSubtitle}{CG Mail Journey \& Log Intelligence System}
+\newcommand{\ReportType}{End-of-Study Internship Report (PFE)}
+\newcommand{\AuthorName}{Ahmed}
+\newcommand{\InstitutionName}{Your University / Engineering School}
+\newcommand{\DepartmentName}{Computer Science / Software Engineering}
+\newcommand{\SupervisorName}{Academic Supervisor}
+\newcommand{\CompanyName}{Orange Tunisia}
+\newcommand{\CompanySupervisorName}{Company Supervisor}
+\newcommand{\InternshipPeriod}{Academic Year 2025--2026}
+\newcommand{\Location}{Tunis, Tunisia}
+
+% ============================================================
+% Embedded bibliography
+% ============================================================
+\begin{filecontents*}{references.bib}
+@rfc{rfc5321,
+  title={Simple Mail Transfer Protocol},
+  author={{Klensin, J.}},
+  year={2008},
+  howpublished={RFC 5321 (IETF)},
+  url={https://www.rfc-editor.org/rfc/rfc5321}
+}
+@rfc{rfc5322,
+  title={Internet Message Format},
+  author={{Resnick, P.}},
+  year={2008},
+  howpublished={RFC 5322 (IETF)},
+  url={https://www.rfc-editor.org/rfc/rfc5322}
+}
+@rfc{rfc7519,
+  title={JSON Web Token (JWT)},
+  author={{Jones, M. and Bradley, J. and Sakimura, N.}},
+  year={2015},
+  howpublished={RFC 7519 (IETF)},
+  url={https://www.rfc-editor.org/rfc/rfc7519}
+}
+@online{elasticGuide,
+  title={Elasticsearch Reference 8.12},
+  author={{Elastic NV}},
+  year={2026},
+  url={https://www.elastic.co/guide/en/elasticsearch/reference/8.12/index.html},
+  note={Accessed 2026}
+}
+@online{kibanaGuide,
+  title={Kibana Reference 8.12},
+  author={{Elastic NV}},
+  year={2026},
+  url={https://www.elastic.co/guide/en/kibana/8.12/index.html},
+  note={Accessed 2026}
+}
+@online{elasticsearchPy,
+  title={Elasticsearch Python Client 8.x},
+  author={{Elastic NV}},
+  year={2026},
+  url={https://elasticsearch-py.readthedocs.io/},
+  note={Accessed 2026}
+}
+@online{fastapiDocs,
+  title={FastAPI Documentation},
+  author={{Rami{\'r}ez, Sebasti{\'a}n}},
+  year={2026},
+  url={https://fastapi.tiangolo.com/},
+  note={Accessed 2026}
+}
+@online{uvicornDocs,
+  title={Uvicorn -- ASGI Server},
+  author={{Christie, Tom}},
+  year={2026},
+  url={https://www.uvicorn.org/},
+  note={Accessed 2026}
+}
+@online{pydanticDocs,
+  title={Pydantic v2 Documentation},
+  author={{Colvin, Samuel et al.}},
+  year={2026},
+  url={https://docs.pydantic.dev/},
+  note={Accessed 2026}
+}
+@online{postgres16,
+  title={PostgreSQL 16 Documentation},
+  author={{PostgreSQL Global Development Group}},
+  year={2026},
+  url={https://www.postgresql.org/docs/16/},
+  note={Accessed 2026}
+}
+@online{reactDocs,
+  title={React -- A JavaScript Library for Building User Interfaces},
+  author={{Meta (Facebook)}},
+  year={2026},
+  url={https://react.dev/},
+  note={Accessed 2026}
+}
+@online{tailwindDocs,
+  title={Tailwind CSS Documentation},
+  author={{Wathan, Adam and Schoger, Steve}},
+  year={2026},
+  url={https://tailwindcss.com/docs},
+  note={Accessed 2026}
+}
+@online{dockerDocs,
+  title={Docker Documentation},
+  author={{Docker Inc.}},
+  year={2026},
+  url={https://docs.docker.com/},
+  note={Accessed 2026}
+}
+@online{dnspythonDocs,
+  title={dnspython -- A DNS Toolkit for Python},
+  author={{Halley, Bob et al.}},
+  year={2026},
+  url={https://dnspython.readthedocs.io/},
+  note={Accessed 2026}
+}
+@online{spamhaus,
+  title={Spamhaus ZEN -- Combined Spam Blocking List},
+  author={{The Spamhaus Project}},
+  year={2026},
+  url={https://www.spamhaus.org/zen/},
+  note={Accessed 2026}
+}
+@online{owaspAuth,
+  title={OWASP Authentication Cheat Sheet},
+  author={{OWASP Foundation}},
+  year={2026},
+  url={https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html},
+  note={Accessed 2026}
+}
+@online{scrumGuide,
+  title={The Scrum Guide},
+  author={{Schwaber, Ken and Sutherland, Jeff}},
+  year={2020},
+  url={https://scrumguides.org/},
+  note={Accessed 2026}
+}
+@online{postfixDocs,
+  title={Postfix Configuration and Log Reference},
+  author={{Venema, Wietse}},
+  year={2026},
+  url={http://www.postfix.org/postconf.5.html},
+  note={Accessed 2026}
+}
+\end{filecontents*}
+
+\addbibresource{references.bib}
+
+% ============================================================
+% Helper: alternating table row color
+% ============================================================
+\newcommand{\rowA}{\rowcolor{rowgray}}
+
+% ============================================================
+% Begin document
+% ============================================================
+\begin{document}
+
+% ----------------------------------------------------------
+% Title page
+% ----------------------------------------------------------
+\begin{titlepage}
+  \centering
+  \vspace*{0.8cm}
+
+  % Institution banner
+  \textcolor{OrangeMain}{\rule{\textwidth}{3pt}}
+  \vspace{0.3cm}
+
+  {\LARGE\bfseries \InstitutionName\par}
+  \vspace{0.15cm}
+  {\large \DepartmentName\par}
+
+  \vspace{0.3cm}
+  \textcolor{OrangeMain}{\rule{\textwidth}{1pt}}
+  \vspace{1.5cm}
+
+  {\Huge\bfseries\color{OrangeMain} \ReportTitle\par}
+  \vspace{0.4cm}
+  {\Large\bfseries \ReportSubtitle\par}
+  \vspace{0.25cm}
+  {\large\itshape \ReportType\par}
+
+  \vspace{1.4cm}
+  \begin{tabular}{>{\bfseries}p{4.5cm} p{8cm}}
+    Author:              & \AuthorName \\[4pt]
+    Host Company:        & \CompanyName \\[4pt]
+    Location:            & \Location \\[4pt]
+    Period:              & \InternshipPeriod \\[4pt]
+    Academic Supervisor: & \SupervisorName \\[4pt]
+    Company Supervisor:  & \CompanySupervisorName \\
+  \end{tabular}
+
+  \vfill
+  \textcolor{OrangeMain}{\rule{\textwidth}{1pt}}
+  \vspace{0.3cm}
+  {\normalsize\textbf{Keywords:} SMTP, Elasticsearch 8.12, FastAPI, React, log analysis, mail journey correlation, DNSBL, JWT, Docker, Orange Tunisia\par}
+  \vspace{0.3cm}
+  {\large \today\par}
+  \textcolor{OrangeMain}{\rule{\textwidth}{3pt}}
+\end{titlepage}
+
+% ----------------------------------------------------------
+% Abstract
+% ----------------------------------------------------------
+\chapter*{Abstract}
+\phantomsection
+\addcontentsline{toc}{chapter}{Abstract}
+
+Modern telecommunications operators rely on intricate, distributed infrastructures to process millions of electronic messages each day.
+At \textbf{Orange Tunisia}, the corporate SMTP infrastructure spans a heterogeneous fleet of edge servers, routing nodes, antivirus appliances, and inbound mail exchangers --- each producing its own stream of plain-text log files independently, without a central collection or correlation mechanism.
+When a message delivery problem occurs, support engineers are compelled to manually open dozens of log files across twenty or more server directories, search for queue identifiers by hand, mentally reconstruct multi-hop message paths, and interpret cryptic SMTP status codes from memory.
+This process is slow, error-prone, and fundamentally unscalable as mail traffic volumes continue to grow.
+
+This report describes the design, architecture, and full implementation of the \textbf{CG Mail Journey \& Log Intelligence Platform} --- an end-to-end solution developed during an internship at Orange Tunisia's Technical Operations Department.
+The platform automates the complete pipeline from raw distributed log ingestion through intelligent mail journey correlation, to a searchable, authenticated web interface that empowers support staff to diagnose delivery issues in seconds rather than hours.
+
+The core contribution is a pair of specialized Python log parsers (\texttt{sent\_parser.py} and \texttt{received\_parser.py}) that implement a \emph{journey correlation algorithm}: they read log files from FES (front-end submission) servers, map downstream delivery identifiers across VIP, GP, and ML relay nodes using a next-hop routing table (\texttt{NEXT\_HOP\_MAP}), and construct a single canonical JSON document per mail journey that captures the complete end-to-end path, timing, Kaspersky antivirus/antispam verdicts, error details, and recipient outcomes.
+Inbound journeys on MX servers are similarly correlated using a two-phase Kaspersky identifier bridging mechanism.
+All normalized documents are bulk-indexed into \textbf{Elasticsearch 8.12.0} under daily indices, enabling sub-second full-text and structured searches across millions of records.
+
+A \textbf{FastAPI} backend with JWT-based authentication exposes a stable REST API (\texttt{/api/search}, \texttt{/api/blacklist/listed}) consumed by a \textbf{React} single-page application that presents a guided operator workflow: date-based search, multi-field filtering, KPI aggregation dashboards, spam/virus detection summaries, and an integrated \textbf{DNS Blacklist (DNSBL) monitoring panel} with email alert dispatch.
+A complementary \textbf{Kibana} interface provides ad-hoc exploratory analytics on the same indices using Lens and Discover.
+
+\paragraph{Main contributions.}
+\begin{itemize}
+  \item A two-pass, regex-driven log parsing pipeline implementing automatic cross-server journey correlation via \texttt{NEXT\_HOP\_MAP} and \texttt{delivery\_lookup}.
+  \item A production-quality Elasticsearch composable index template (schema version~2) with deliberate indexing/storage separation for raw audit lines.
+  \item A FastAPI REST API with JWT/PostgreSQL authentication, Elasticsearch query DSL construction, and a background DNSBL monitoring thread with email digest dispatch.
+  \item A React SPA delivering guided operator workflows, KPI dashboards, and a DNS blacklist security panel, complemented by Kibana for ad-hoc analytics.
+  \item Performance benchmarks demonstrating 2--8\,s full-day ingestion and sub-200\,ms query latency under single-node Elasticsearch.
+\end{itemize}
+
+% ----------------------------------------------------------
+% Front matter
+% ----------------------------------------------------------
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+
+% ===========================================================
+% General Introduction
+% ===========================================================
+\chapter*{General Introduction}
+\phantomsection
+\addcontentsline{toc}{chapter}{General Introduction}
+
+\section*{Problem Statement}
+\phantomsection
+\addcontentsline{toc}{section}{Problem Statement}
+
+The daily operation of a large-scale telecommunications infrastructure generates an enormous volume of machine-generated text data.
+For Orange Tunisia's mail platform, this translates to hundreds of thousands of log lines per day distributed across more than twenty server directories organized by role:
+front-end submission servers (FES01, FES02), VIP routing servers (VIP01, VIP02), general-population relay servers (GP01, GP02), mail-layer servers (ML01, ML02), and inbound mail exchangers (MX01 through MX04).
+Each server writes independent plain-text \texttt{.log} files, sometimes time-sliced into multiple files per day for high-volume periods.
+
+The critical problem is \textbf{distributed log fragmentation} combined with \textbf{cross-server identifier churn}.
+A single outbound email begins its journey with a Postfix-style queue identifier (e.g., \texttt{[123456]}) on an FES server~\cite{postfixDocs}.
+When that message is successfully relayed to a downstream node, the downstream system assigns a \emph{completely different} numeric delivery identifier visible in its own logs.
+Without automated linkage, support engineers cannot answer the fundamental question:
+\emph{``What happened to message X from the moment it was submitted until it was delivered or rejected?''}
+They are forced to open multiple log files manually, search for related IDs by intuition, and mentally reconstruct a coherent timeline --- a process that can take 30\,minutes to 2\,hours per incident and is highly susceptible to human error.
+
+\section*{Project Objectives}
+\phantomsection
+\addcontentsline{toc}{section}{Project Objectives}
+
+The primary objective of this internship project is to design and implement a \textbf{comprehensive log investigation platform} that:
+
+\begin{enumerate}
+  \item \textbf{Automates log aggregation and normalization} --- reads plain-text log files from all server families, parses structured fields from free-form log lines using regular expressions, and produces canonical JSON documents.
+  \item \textbf{Implements cross-server journey correlation} --- links FES queue identifiers to downstream delivery identifiers and assembles the complete multi-hop path into a single searchable document per mail journey.
+  \item \textbf{Provides real-time search and filtering} --- exposes an authenticated REST API enabling support engineers to retrieve any mail journey by sender, recipient, queue ID, status, spam verdict, time range, or any combination thereof, with results in under one second.
+  \item \textbf{Delivers operational KPI dashboards} --- aggregates key metrics (status distribution, top error codes, spam ratios, average delivery duration by status) into a React-based operator interface.
+  \item \textbf{Integrates infrastructure security monitoring} --- continuously scans outbound mail server IP addresses against major DNS blocklists and alerts administrators when an IP is listed.
+  \item \textbf{Maintains scalability and operational simplicity} --- leverages containerization (Docker Compose) for zero-configuration deployment and Elasticsearch's distributed search engine for horizontal scalability as log volume grows.
+\end{enumerate}
+
+\section*{Expected Contributions}
+\phantomsection
+\addcontentsline{toc}{section}{Expected Contributions}
+
+\begin{itemize}
+  \item \textbf{Reduction in MTTD} from hours to seconds by replacing manual \texttt{grep} workflows with a guided web interface backed by Elasticsearch full-text search.
+  \item \textbf{A reusable ingestion pipeline} that can process historical log data in batch mode or be scheduled for daily incremental runs, producing a growing searchable archive.
+  \item \textbf{Proactive IP reputation monitoring} through automated DNSBL scanning with email digest alerts.
+  \item \textbf{An extensible platform} built on open standards (Elasticsearch, FastAPI, React) ready for future enhancements such as real-time streaming, ML anomaly detection, or SIEM integration.
+  \item \textbf{A Kibana analytics layer} enabling NOC staff to build custom dashboards and run ad-hoc KQL queries without requiring engineering intervention.
+\end{itemize}
+
+\section*{Document Structure}
+\phantomsection
+\addcontentsline{toc}{section}{Document Structure}
+
+\textbf{Chapter~1} situates the project within Orange Tunisia's Technical Operations Department, describes the existing manual investigation process and its limitations, and presents the proposed solution and the Agile Scrum project management methodology.
+
+\textbf{Chapter~2} provides a thorough review of the technologies selected for the platform: the Elastic Stack (Elasticsearch, Logstash, Kibana), Python backend engineering with FastAPI and Uvicorn, React and Tailwind CSS for the frontend, and the domain-specific knowledge required for SMTP log analysis --- including SMTP status codes, DNS blocklist mechanisms, and multithreading patterns.
+
+\textbf{Chapter~3} identifies the system actors (N1/N2 support agents, system administrators, Security Operations Center), formalizes functional and non-functional requirements, and presents the UML system models: use case diagram, sequence diagram for log ingestion, and the activity diagram for the troubleshooting workflow.
+
+\textbf{Chapter~4} details the full implementation: development environment, core parser logic with regex design, the FastAPI routing system, Elasticsearch mapping and index templates, the React user interface, Kibana integration, testing strategy, and performance benchmarking results.
+
+% ===========================================================
+\chapter{Project Framework and Organizational Environment}
+% ===========================================================
+
+\section{Introduction}
+
+This chapter introduces the organizational context in which the SMTP Log Investigation Platform was designed and developed.
+It presents Orange Tunisia and its Technical Operations Department, describes the mail infrastructure, analyzes the manual investigation workflow that preceded this project, quantifies that workflow's limitations, and introduces the proposed solution together with the Agile Scrum management methodology.
+
+\section{Hosting Organization: Orange Tunisia}
+
+\subsection{Presentation of the Group}
+
+Orange~S.A. is a French multinational telecommunications corporation and one of the world's largest operators of mobile and internet services, serving approximately 296 million customers across 26 countries as of 2024.
+Founded in 1988 as France Télécom and rebranded as Orange in 2013, the group positions itself as a digital services provider extending beyond traditional connectivity into cloud computing, cybersecurity, financial services, and enterprise data solutions.
+
+Orange Tunisia operates as a fully branded Orange subsidiary in the Tunisian market, offering mobile, broadband, and enterprise services.
+The subsidiary operates a modern, carrier-grade network infrastructure that includes a complex email and messaging backbone serving both corporate clients and large-scale transactional mail flows.
+Orange's strategic roadmap --- \emph{Engage 2025} --- places digital transformation, network modernisation, and customer experience at the centre of its priorities.
+
+\subsection{The Technical Operations Department}
+
+The Technical Operations Department (\emph{Direction des Opérations Techniques}) at Orange Tunisia is responsible for:
+
+\begin{itemize}
+  \item \textbf{Network infrastructure management:} configuration, monitoring, and incident response for all active network elements.
+  \item \textbf{Mail platform operations:} administration of the SMTP relay infrastructure and Kaspersky Security for Linux Mail Server antispam/antivirus filtering.
+  \item \textbf{Security operations:} coordination with the SOC for threat detection and incident response.
+  \item \textbf{Log management and auditing:} collection, retention, and analysis of system and application logs for operational and regulatory purposes.
+\end{itemize}
+
+The department operates tiered support structures.
+Level~1 (N1) agents handle initial customer contacts; Level~2 (N2) engineers perform deeper technical investigations; Level~3 specialists handle complex infrastructure issues.
+The SMTP log investigation platform is primarily designed to empower N1 and N2 engineers.
+
+\subsection{Strategic Challenges in Telecom Log Management}
+
+The telecommunications sector is distinguished by the sheer volume and velocity of operational log data generated by active network elements.
+For a carrier-grade SMTP infrastructure processing millions of messages per day, log management presents several strategic challenges:
+
+\begin{description}
+  \item[Volume and velocity:] A single FES server may generate tens of thousands of log lines per hour during peak periods. Across twenty servers, daily volume reaches hundreds of millions of lines.
+  \item[Heterogeneity:] Different server roles produce log files with different line grammars, identifier schemes, and event vocabularies.
+  \item[Regulatory compliance:] Telecom operators are subject to data retention regulations requiring log records to be preserved for specified periods.
+  \item[Security visibility:] The mail infrastructure is a high-value target for abuse --- spam campaigns, phishing, and denial-of-service attacks.
+\end{description}
+
+\section{Project Presentation}
+
+\subsection{Context and Background}
+
+This internship project was initiated in response to a concrete operational need: the existing process for investigating SMTP delivery failures was manual, slow, and increasingly unsustainable.
+The project was scoped as a full-stack platform development effort, encompassing log parsing, search engine integration, backend API design, and frontend development.
+It received the internal designation \textbf{CG Mail Journey \& Log Intelligence Platform}.
+
+\subsection{The SMTP Infrastructure at Orange}
+
+Orange Tunisia's outbound and inbound mail infrastructure is organised into a layered architecture:
+
+\begin{description}
+  \item[Front-End Submission Servers (FES01, FES02):] Entry points for outbound corporate mail. Messages are queued and subjected to initial policy checks before being relayed onward. Each message receives a numeric Postfix queue identifier \texttt{[qid]}.
+  \item[VIP Routing Servers (VIP01, VIP02):] High-priority mail flows (VIP accounts, executive communications) are routed through dedicated relay nodes.
+  \item[General Population Relay Servers (GP01, GP02):] Standard corporate outbound mail. These nodes handle the bulk of outbound volume.
+  \item[Mail Layer Servers (ML01, ML02):] A supplementary relay tier for specific mail flows.
+  \item[Inbound Mail Exchangers (MX01--MX04):] Receive inbound SMTP connections from the public internet, perform connection-level filtering, and run Kaspersky content inspection.
+\end{description}
+
+The architecture is illustrated in Figure~\ref{fig:infra-overview}.
+
+% -------------------------------------------------------
+% FIGURE 1.1 — Infrastructure overview (redesigned, clear)
+% -------------------------------------------------------
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=1.4cm and 1.6cm,
+  fesbox/.style={
+    rectangle, draw=OrangeMain, fill=OrangeMain!12, rounded corners=4pt,
+    minimum width=2.2cm, minimum height=0.75cm, align=center, font=\small\bfseries
+  },
+  relaybox/.style={
+    rectangle, draw=blue!60, fill=blue!8, rounded corners=4pt,
+    minimum width=2.0cm, minimum height=0.70cm, align=center, font=\small
+  },
+  mxbox/.style={
+    rectangle, draw=gray!70, fill=gray!10, rounded corners=4pt,
+    minimum width=2.0cm, minimum height=0.70cm, align=center, font=\small
+  },
+  cloudbox/.style={
+    rectangle, draw=black!40, dashed, fill=white,
+    rounded corners=6pt, minimum width=2.6cm, minimum height=0.75cm,
+    align=center, font=\small\itshape
+  },
+  arr/.style={-{Stealth[length=2.5mm]}, thick, gray!70},
+  label/.style={font=\scriptsize\itshape, gray}
+]
+
+% --- Internet / Corporate nodes (top row)
+\node[cloudbox] (corp)  at (3.0, 5.2)  {Corporate\\mail clients};
+\node[cloudbox] (inet)  at (8.5, 5.2)  {Internet\\(inbound)};
+
+% --- FES servers (outbound entry)
+\node[fesbox] (fes1) at (1.5, 3.5) {FES01};
+\node[fesbox] (fes2) at (4.5, 3.5) {FES02};
+
+% --- Relay tier
+\node[relaybox] (vip1) at (0.0,  1.5) {VIP01};
+\node[relaybox] (vip2) at (2.0,  1.5) {VIP02};
+\node[relaybox] (gp1)  at (4.0,  1.5) {GP01};
+\node[relaybox] (gp2)  at (6.0,  1.5) {GP02};
+\node[relaybox] (ml1)  at (4.0,  0.0) {ML01};
+\node[relaybox] (ml2)  at (6.0,  0.0) {ML02};
+
+% --- MX servers (inbound)
+\node[mxbox] (mx1) at (8.0, 3.5) {MX01};
+\node[mxbox] (mx2) at (10.0, 3.5) {MX02};
+\node[mxbox] (mx3) at (8.0,  2.0) {MX03};
+\node[mxbox] (mx4) at (10.0, 2.0) {MX04};
+
+% --- Arrows: corporate -> FES
+\draw[arr] (corp) -- (fes1);
+\draw[arr] (corp) -- (fes2);
+
+% --- Arrows: internet -> MX
+\draw[arr] (inet) -- (mx1);
+\draw[arr] (inet) -- (mx2);
+
+% --- Arrows: FES01 -> all relay servers
+\draw[arr] (fes1) -- (vip1);
+\draw[arr] (fes1) -- (vip2);
+\draw[arr] (fes1) -- (gp1);
+\draw[arr] (fes1) -- (gp2);
+\draw[arr] (fes1) to[bend left=12] (ml1);
+\draw[arr] (fes1) to[bend left=8]  (ml2);
+
+% --- Arrows: FES02 -> all relay servers
+\draw[arr] (fes2) to[bend right=12] (vip1);
+\draw[arr] (fes2) -- (vip2);
+\draw[arr] (fes2) -- (gp1);
+\draw[arr] (fes2) -- (gp2);
+\draw[arr] (fes2) -- (ml1);
+\draw[arr] (fes2) -- (ml2);
+
+% --- Labels
+\node[label, below=0.15cm of vip1] {VIP tier};
+\node[label, below=0.15cm of gp2]  {GP tier};
+\node[label, below=0.15cm of ml2]  {ML tier};
+\node[label, right=0.2cm  of mx2]  {MX tier};
+\node[label, left=0.2cm   of fes1] {\textbf{Outbound}};
+\node[label, right=0.2cm  of mx1]  {\textbf{Inbound}};
+
+\end{tikzpicture}
+\caption{SMTP infrastructure overview at Orange Tunisia}
+\label{fig:infra-overview}
+\end{figure}
+
+\subsection{The Problematic: Distributed Log Fragmentation}
+
+Consider the lifecycle of a single outbound email:
+
+\begin{enumerate}
+  \item The message is submitted to FES01 and assigned \texttt{[qid=123456]}. The FES log records: sender, recipient, Kaspersky result, and relay action: \texttt{sent [FESID] -> [10.x.x.20]:25 got:250 789012345}.
+  \item The downstream VIP node (based on the \texttt{.20} last octet) receives the message and logs it under \texttt{[deliveryId=789012345]}. The VIP log records delivery confirmation and final SMTP response.
+  \item A delivery failure (e.g., \texttt{550 User Unknown}) appears in the VIP log under \texttt{[789012345]}, \emph{not} under \texttt{[123456]}.
+\end{enumerate}
+
+An engineer investigating this must: (a) find the \texttt{[qid]} on FES01; (b) parse the relay line to find \texttt{got:250 789012345}; (c) determine VIP is the downstream server from the IP's last octet; (d) open VIP01 or VIP02 for that date; (e) search for \texttt{[789012345]}; (f) interpret the \texttt{550} rejection.
+A single mistake at any step invalidates the investigation.
+
+\section{Existing System Study and Critique}
+
+\subsection{Description of the Manual ``Grep'' Investigation Process}
+
+Prior to this project, the investigation workflow relied entirely on Unix command-line tools:
+
+\begin{lstlisting}[style=reportcode,language=bash,caption={Typical manual investigation session},label={lst:grep}]
+# Step 1: Find the queue ID
+grep "from <customer@example.com>" Log-CG/FES01/2026-01-27.log
+
+# Step 2: Find relay line and delivery ID
+grep "\[123456\]" Log-CG/FES01/2026-01-27.log | grep "got:250"
+
+# Step 3: Search downstream (manual IP-to-server mapping)
+grep "\[789012345\]" Log-CG/VIP01/2026-01-27.log
+grep "\[789012345\]" Log-CG/VIP02/2026-01-27.log
+
+# Step 4: Interpret manually
+\end{lstlisting}
+
+This process requires the engineer to: mentally maintain the identifier chain across multiple greps; know which directories to search based on IP last octets; open and parse multiple files; and manually correlate timestamps.
+
+\subsection{Limitations: Speed, Scalability, and Human Error}
+
+\begin{description}
+  \item[Speed:] A single cross-server investigation typically requires 15--45 minutes for an experienced engineer and 60--120 minutes for a junior support agent. During high-incident periods, the support team cannot scale.
+  \item[Scalability:] The \texttt{grep} approach does not scale with data volume. Log file sizes grow linearly; there is no indexing or result caching.
+  \item[Human error:] Engineers may search only FES01 when the message went through FES02, mistake a delivery ID for a queue ID, read the wrong date file, or miss a relevant log line in a large file.
+  \item[No historical context:] The workflow provides no mechanism for tracking trends --- rising failure rates, repeat spam sources, or degrading relay performance go unnoticed.
+  \item[No security visibility:] IP reputation (DNSBL) checks must be performed separately with external tools, typically after a failure is already impacting customers.
+\end{description}
+
+\subsection{Economic and Operational Impact of Delayed Diagnostics}
+
+\begin{itemize}
+  \item \textbf{Customer experience degradation:} Delivery failures persist for hours instead of minutes; in a competitive market, repeated service failures damage retention metrics.
+  \item \textbf{Engineer productivity loss:} Experienced N2 engineers spending 30--60 minutes per incident are unavailable for proactive maintenance.
+  \item \textbf{Cascading incident risk:} A systemic failure (e.g., a relay generating 550 errors for an entire domain) may go undetected until thousands of messages have failed.
+  \item \textbf{Compliance exposure:} Without systematic log archiving and query capability, demonstrating compliance in a regulatory audit requires manual assembly of raw log files.
+\end{itemize}
+
+\section{Proposed Solution and Methodology}
+
+\subsection{High-Level Solution Overview (ELK + FastAPI)}
+
+The CG Mail Journey \& Log Intelligence Platform is designed around three architectural principles:
+
+\begin{enumerate}
+  \item \textbf{Normalize once, query many times:} Pre-process all log files into normalized JSON documents indexed in Elasticsearch, where they become instantly searchable.
+  \item \textbf{Correlate across servers automatically:} The journey correlation algorithm performs cross-server ID linking that engineers previously did manually.
+  \item \textbf{Expose through a layered interface:} Provide both a guided operator interface (React SPA backed by FastAPI) for N1/N2 workflows and Kibana for ad-hoc exploration by N3 engineers.
+\end{enumerate}
+
+Table~\ref{tab:techstack} summarises the full technology stack.
+
+\begin{table}[H]
+\centering
+\caption{Technology stack versions and roles}
+\label{tab:techstack}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3.2cm} p{2.8cm} X@{}}
+\toprule
+Component & Version & Role \\
+\midrule
+\rowA Elasticsearch & 8.12.0 & Distributed search and analytics engine; daily journey indices \\
+Kibana & 8.12.0 & Ad-hoc analytics, Lens dashboards, Discover \\
+\rowA Python & 3.12 & Parsers (\texttt{sent\_parser.py}, \texttt{received\_parser.py}) and API \\
+FastAPI & $\geq$0.109.0 & REST API, JWT auth, BackgroundTasks \\
+\rowA Uvicorn & $\geq$0.27.0 & ASGI server \\
+PostgreSQL & 16 & User account storage for JWT authentication \\
+\rowA React & Latest LTS & Single-page application (guided operator interface) \\
+Tailwind CSS & — & Utility-first responsive styling \\
+\rowA dnspython & $\geq$2.6.1 & DNSBL DNS queries \\
+Docker Compose & v2 & Container orchestration for ES, Kibana, Postgres \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Project Lifecycle: The Agile Scrum Framework}
+
+The development effort was managed using \textbf{Agile Scrum}~\cite{scrumGuide}, which is well-suited to this internship because it allows requirements to be refined iteratively, produces working software at the end of each sprint, and accommodates the inherent uncertainty of a first-of-kind platform.
+
+\begin{description}
+  \item[Product Owner:] Internship supervisor, responsible for prioritising the product backlog.
+  \item[Scrum Master / Developer:] The intern, responsible for sprint planning, development, testing, and retrospectives.
+  \item[Stakeholders:] N1/N2 support engineers providing feedback during sprint reviews.
+\end{description}
+
+Sprint duration was fixed at two weeks.
+
+\subsection{Sprint Planning and Deliverables}
+
+\begin{table}[H]
+\centering
+\caption{Agile Scrum sprint plan}
+\label{tab:sprints}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{1.6cm} p{3.8cm} X@{}}
+\toprule
+Sprint & Theme & Key Deliverables \\
+\midrule
+\rowA S1 & Infrastructure \& Basic Parsing & Docker Compose stack; FES-only sent parser; ES template v1; first Kibana data view \\
+S2 & Journey Correlation & \texttt{NEXT\_HOP\_MAP} logic; complete status model; Kaspersky extraction; \texttt{audit\_metrics} \\
+\rowA S3 & Inbound Parser \& API & \texttt{received\_parser.py}; schema v2; FastAPI with JWT auth; \texttt{/api/search} \\
+S4 & Frontend \& Security & React SPA; DNSBL scanner; blacklist API; email alerts \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Conclusion}
+
+This chapter has presented Orange Tunisia's Technical Operations Department, described the SMTP infrastructure and its multi-server log fragmentation problem, analyzed the limitations of the existing manual investigation workflow, and introduced the proposed platform together with the Agile Scrum methodology used to develop it.
+The following chapter reviews the technological foundations that underpin the platform's implementation.
+
+% ===========================================================
+\chapter{State of the Art and Technological Foundation}
+% ===========================================================
+
+\section{Introduction}
+
+Building a production-grade log intelligence platform requires selecting technologies that are individually mature and collectively composable.
+This chapter reviews the state of the art for each major component: the Elastic Stack for search and analytics, FastAPI and the Python ecosystem for backend API development, React and Tailwind CSS for frontend engineering, and the domain-specific knowledge of SMTP protocols, antivirus systems, and DNS-based IP reputation that gives the platform its operational meaning.
+
+\section{The Elastic Stack (ELK)}
+
+\subsection{Elasticsearch: Distributed Search and Inverted Indexing}
+
+Elasticsearch is an open-source, distributed search and analytics engine built on Apache Lucene~\cite{elasticGuide}.
+First released in 2010, it has become the de facto standard for log analytics, full-text search, and operational intelligence at scale.
+
+\paragraph{Core architecture.}
+Elasticsearch stores data as JSON documents organised into \textbf{indices}.
+Each index is divided into one or more \textbf{shards} (Lucene instances) that can be distributed across a cluster for horizontal scalability.
+Shards can be \emph{replicated} for fault tolerance.
+
+\paragraph{Inverted index.}
+The fundamental data structure that makes Elasticsearch fast for text search is the \textbf{inverted index} --- a mapping from each unique term to the list of documents containing that term, with positional and frequency metadata.
+For a log corpus where engineers search for sender addresses, error codes, or queue IDs, the inverted index allows Elasticsearch to locate all matching documents in O($\log N$) time compared to the O($N$) linear scan of \texttt{grep}.
+
+\paragraph{Field types used in this project.}
+\begin{description}
+  \item[\texttt{keyword}:] Exact-match terms, optimal for filter clauses, aggregations, and sorting (\texttt{status}, \texttt{qid}, \texttt{kaspersky\_spam\_status}).
+  \item[\texttt{text} + \texttt{.keyword} sub-field:] Human-readable strings benefiting from full-text analysis (\texttt{sender}) while also supporting exact-match aggregations.
+  \item[\texttt{date}:] Timestamp-based range queries and time-series visualization (\texttt{start\_time}, \texttt{end\_time}, \texttt{@timestamp}).
+  \item[\texttt{float}:] Numeric range queries and statistical aggregations (\texttt{duration\_seconds}).
+  \item[\texttt{object} with \texttt{enabled: false}:] The \texttt{audit} field stores raw log lines in \texttt{\_source} \emph{without} building an inverted index --- a deliberate optimization saving disk space and index build time.
+\end{description}
+
+\paragraph{Aggregation framework.}
+Beyond search, Elasticsearch's aggregation framework computes grouped metrics directly in the engine --- term counts (status distribution, top senders), averages (mean delivery duration by status), and filtered sub-aggregations (top spam senders among spam-classified messages).
+
+\paragraph{Daily indices strategy.}
+The platform uses daily indices (\texttt{mail-journeys-sent-YYYY-MM-DD}, \texttt{mail-journeys-received-YYYY-MM-DD}) following the time-series pattern recommended by Elastic.
+This enables efficient date-range queries (query only the relevant daily index), simplifies retention policy enforcement (delete old indices), and avoids mapping conflicts between data from different time periods.
+
+\subsection{Logstash and Kibana: Data Ingestion and Visualization}
+
+\textbf{Logstash}~\cite{kibanaGuide} is the ingestion pipeline of the ELK stack: it accepts input from many sources (file, syslog, Kafka, JDBC), applies filter plugins (Grok for log parsing, Mutate for field transformation, GeoIP for IP enrichment), and outputs to Elasticsearch.
+For this project, a custom Python parsing pipeline was chosen over Logstash because:
+
+\begin{enumerate}
+  \item The multi-server journey correlation logic (\texttt{NEXT\_HOP\_MAP}, \texttt{delivery\_lookup}, Kaspersky \texttt{detailsid} bridging) requires stateful two-pass processing that is difficult to express in Logstash filter pipelines.
+  \item Python provides richer regex support, dictionary-based journey state management, and direct integration with Elasticsearch's bulk API.
+  \item The custom parsers can be run on-demand per date, making them well-suited to batch ingestion.
+\end{enumerate}
+
+\textbf{Kibana} provides: \textbf{Discover} (full-text search using KQL with configurable column selection), \textbf{Lens} (drag-and-drop visual builder for charts and metrics dashboards), and \textbf{Dashboard} (composition of multiple Lens panels into operational overview screens).
+
+\subsection{Why ELK? Comparison with RDBMS for Log Analysis}
+
+Table~\ref{tab:elk-vs-rdbms} compares Elasticsearch and PostgreSQL for log analytics use cases.
+
+\begin{table}[H]
+\centering
+\caption{Elasticsearch vs.\ RDBMS for log analysis}
+\label{tab:elk-vs-rdbms}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{4.2cm} X X@{}}
+\toprule
+Dimension & Elasticsearch & PostgreSQL \\
+\midrule
+\rowA Full-text search & O($\log N$) via inverted index & O($N$) ILIKE table scan \\
+Schema flexibility & Dynamic / semi-structured JSON & Rigid schema, ALTER TABLE \\
+\rowA Horizontal scaling & Native distributed sharding & Complex (Citus, partitioning) \\
+Time-series queries & Native date histogram aggs & Possible, but slower \\
+\rowA Aggregation performance & In-engine, highly optimised & SQL GROUP BY, slower at scale \\
+Kibana integration & Native & Via plugins \\
+\rowA Write performance & Optimised bulk indexing API & Row-level MVCC overhead \\
+Operational complexity & Higher (JVM, cluster) & Lower for small scale \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+For a log analytics use case at carrier scale, Elasticsearch's advantages in full-text search, aggregation performance, and Kibana integration decisively outweigh the added operational complexity.
+PostgreSQL is retained in this project only for its transactional strength in the JWT user authentication subsystem.
+
+\section{Backend Engineering with Python}
+
+\subsection{FastAPI: High-Performance Asynchronous APIs}
+
+FastAPI~\cite{fastapiDocs} is a modern, high-performance Python web framework for building REST APIs.
+Key features relevant to this project:
+
+\begin{description}
+  \item[Pydantic-based validation:] Request bodies (\texttt{SignupBody}, \texttt{LoginBody}) are defined as Pydantic \texttt{BaseModel} classes; FastAPI automatically parses incoming JSON, validates field types, and returns structured 422 errors for invalid input.
+  \item[Automatic OpenAPI documentation:] FastAPI generates a complete OpenAPI 3.0 specification, serving interactive Swagger UI at \texttt{/docs}.
+  \item[Dependency injection:] FastAPI's \texttt{Depends()} system provides clean injection for cross-cutting concerns. The \texttt{get\_current\_user} dependency validates the JWT bearer token and is attached to protected routes with a single annotation.
+  \item[Background tasks:] \texttt{BackgroundTasks} enables dispatching work (such as sending the blacklist digest email) asynchronously after the HTTP response has been sent.
+\end{description}
+
+\subsection{Uvicorn and ASGI Architecture}
+
+Uvicorn~\cite{uvicornDocs} is the ASGI (Asynchronous Server Gateway Interface) server that runs the FastAPI application.
+ASGI is the successor to WSGI, designed to support Python's \texttt{async}/\texttt{await} concurrency model.
+In production, multiple Uvicorn workers behind a reverse proxy (nginx, Traefik) provide both concurrency and horizontal scaling.
+
+\subsection{Data Integration with the Elasticsearch Python Client}
+
+The \texttt{elasticsearch-py} client (version $\geq$8.12.0)~\cite{elasticsearchPy} is used throughout the backend:
+\texttt{get\_elasticsearch()} in \texttt{es\_infra.py} creates a shared client instance;
+\texttt{helpers.bulk()} in the parsers performs efficient batch indexing using Elasticsearch's Bulk API;
+\texttt{es.search()} and \texttt{es.indices.*} provide search and index management.
+
+\section{Frontend Architecture}
+
+\subsection{React: Component-Based UI Development}
+
+React~\cite{reactDocs} is a JavaScript library for building user interfaces developed by Meta.
+React's component model maps naturally to the mail investigation interface: the search filter panel, results table, KPI dashboard, and blacklist monitor are each independent components managing local state via hooks (\texttt{useState}, \texttt{useEffect}).
+
+\subsection{Tailwind CSS: Utility-First Styling}
+
+Tailwind CSS~\cite{tailwindDocs} provides a comprehensive set of low-level CSS utility classes that can be composed directly in JSX markup to style components without writing custom CSS.
+This enables responsive, professional-looking layouts --- filter panels, data tables with color-coded status badges, modal dialogs --- without any custom stylesheet.
+
+\subsection{Lucide-React: Iconography for Dashboard Clarity}
+
+Lucide-React provides over 1,000 consistent, scalable SVG icons as React components.
+Icons communicate meaning at a glance: a magnifying glass for search, a shield for security/blacklist, an envelope for mail journeys, a warning triangle for Failed status, and a checkmark circle for Success, reducing cognitive load for support engineers scanning hundreds of results.
+
+\section{Log Analysis \& Domain Knowledge}
+
+\subsection{SMTP Protocol Fundamentals}
+
+The Simple Mail Transfer Protocol (SMTP) is the foundational application-layer protocol for email transmission, defined in RFC~5321~\cite{rfc5321} and updated by RFC~5322~\cite{rfc5322}.
+
+An SMTP transaction proceeds as follows:
+\begin{enumerate}
+  \item TCP connection establishment to port 25 (or 587 for submission).
+  \item \textbf{Banner and EHLO:} The receiving server sends a greeting; the client identifies itself and negotiates extensions.
+  \item \textbf{Envelope negotiation:} \texttt{MAIL FROM:<sender>} and \texttt{RCPT TO:<recipient>}.
+  \item \textbf{Data transfer:} Client sends \texttt{DATA}, then message headers and body, terminated by a line containing only \texttt{.}.
+  \item \textbf{Server response:} Final SMTP response code indicating acceptance (\texttt{250 OK}), transient failure (\texttt{4xx}), or permanent failure (\texttt{5xx}).
+  \item \textbf{Connection closure:} Both parties issue \texttt{QUIT}.
+\end{enumerate}
+
+In the Orange Tunisia infrastructure, FES servers act as sending MTAs when relaying corporate mail to downstream servers.
+The \texttt{got:250 <deliveryId>} log line is FES's record of the receiving server's \texttt{250 OK} response, which includes the receiving server's internally assigned message identifier --- the precise moment at which the delivery identifier transitions from the FES-assigned \texttt{[qid]} to the downstream-assigned \texttt{deliveryId}.
+
+\subsection{Analysis of SMTP Status Codes and Error Handling}
+
+Table~\ref{tab:smtp-codes} summarises the most frequently encountered SMTP status codes and their operational interpretation.
+
+\begin{table}[H]
+\centering
+\caption{SMTP status codes reference}
+\label{tab:smtp-codes}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{1.4cm} p{2.2cm} X p{3cm}@{}}
+\toprule
+Code & Category & Meaning & Platform Handling \\
+\midrule
+\rowA 250 & Success & Message accepted / delivered & \texttt{got:250} triggers cross-server correlation \\
+421 & Transient fail & Service temporarily unavailable & Logged as Failed, code \texttt{421} \\
+\rowA 450 & Transient fail & Mailbox temporarily unavailable & Logged as Failed, code \texttt{450} \\
+451 & Transient fail & Local processing error & Logged as Failed, code \texttt{451} \\
+\rowA 452 & Transient fail & Insufficient system storage & Logged as Failed, code \texttt{452} \\
+500 & Perm.\ failure & Syntax error & Logged as Failed, code \texttt{500} \\
+\rowA 550 & Perm.\ failure & Mailbox unavailable / rejected & Most common failure; logged as Failed \\
+551 & Perm.\ failure & User not local & Logged as Failed, code \texttt{551} \\
+\rowA 552 & Perm.\ failure & Exceeded storage allocation & Logged as Failed, code \texttt{552} \\
+553 & Perm.\ failure & Mailbox name not allowed & Logged as Failed, code \texttt{553} \\
+\rowA 554 & Perm.\ failure & Transaction failed / policy violation & Logged as Failed, code \texttt{554} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Real-Time Processing: Multithreading vs.\ Sequential Parsing}
+
+The journey parsers are implemented as \textbf{single-threaded} sequential Python processes.
+This design choice is deliberate:
+
+\begin{description}
+  \item[In-order processing requirement:] The sent-mail parser performs two sequential passes: first over FES logs (building the \texttt{delivery\_lookup} mapping), then over downstream VIP/GP/ML logs (using \texttt{delivery\_lookup} to attribute lines to the correct journey). These passes must be sequential.
+  \item[Memory footprint:] A single day's journey dictionary fits comfortably in memory (tens of thousands of entries $\times$ $\sim$1--2\,KB per entry).
+  \item[Practical parallelism:] Production parallelism is achieved by running multiple parser processes simultaneously for different dates rather than parallelizing within a single date.
+\end{description}
+
+\textbf{Contrast with DNSBL scanning:} \texttt{blacklist\_scan.py} uses \texttt{ThreadPoolExecutor(max\_workers=20)} because DNSBL queries are I/O-bound (waiting for DNS resolution) with no data dependencies between individual (IP, DNSBL) pairs.
+Threading provides near-linear speedup for this use case, reducing a 65-query scan from potentially minutes to under 10 seconds.
+
+\subsection{Infrastructure Security: DNSBL and IP Reputation Systems}
+
+DNS-based Blocklists (DNSBLs)~\cite{spamhaus}, sometimes called Real-time Blackhole Lists (RBLs), are distributed databases of IP addresses known or suspected to be sources of spam or abusive traffic.
+They are implemented as DNS zones where the presence of a DNS \texttt{A} record indicates that an IP is listed.
+
+\paragraph{Query mechanism.}
+To check whether IP \texttt{a.b.c.d} is listed in DNSBL \texttt{bl.example.com}, the client resolves the hostname \texttt{d.c.b.a.bl.example.com}.
+If a record is returned, the IP is listed; an \texttt{NXDOMAIN} response means the IP is clean.
+
+Table~\ref{tab:dnsbls} lists the DNSBLs monitored by this platform.
+
+\begin{table}[H]
+\centering
+\caption{DNS Blocklists monitored by the platform}
+\label{tab:dnsbls}
+\begin{tabularx}{\textwidth}{@{}>{\ttfamily}p{4.8cm} p{3.2cm} X@{}}
+\toprule
+\textnormal{DNSBL Zone} & Operator & Focus \\
+\midrule
+\rowA zen.spamhaus.org & Spamhaus Project & Composite: SBL (spam sources), XBL (exploited hosts), PBL (policy block) \\
+bl.spamcop.net & SpamCop / Cisco & User-reported spam sources \\
+\rowA dnsbl.sorbs.net & SORBS & Multi-category: spam, open relays, zombies \\
+dnsbl-2.uceprotect.net & UCEPROTECT & ISP-level blocks from abuse reports \\
+\rowA access.redhawk.org & Redhawk & Spam and malware sources \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The platform monitors \textbf{13 specific IP addresses} from Orange Tunisia's outbound mail infrastructure against all 5 DNSBLs every 5 minutes, producing 65 checks per scan cycle~\cite{dnspythonDocs}.
+
+\section{Conclusion}
+
+This chapter has reviewed the complete technological foundation: Elasticsearch's inverted index and aggregation engine, Kibana's visualization capabilities, FastAPI's asynchronous REST framework, React's component model, and the domain-specific SMTP and DNSBL knowledge required to build a meaningful mail log investigation tool.
+The following chapter applies this knowledge to formal system design.
+
+% ===========================================================
+\chapter{Analysis of Requirements and System Design}
+% ===========================================================
+
+\section{Introduction}
+
+This chapter formalises the system's requirements through structured analysis and expresses the design through UML modelling.
+Requirements analysis transforms the operational needs identified in Chapter~1 into precise, testable specifications.
+UML modelling provides implementation-independent blueprints that guided the development team.
+
+The analysis involved structured interviews with N1/N2 support engineers, observation sessions of the manual investigation workflow, and review of existing scripts and documentation.
+Requirements were prioritised using the MoSCoW framework (Must Have, Should Have, Could Have, Won't Have).
+
+\section{Identification of Actors}
+
+\subsection{Support Agents (N1/N2)}
+
+\textbf{N1 (Level~1) Support Agents} are the primary users.
+They are non-specialist operators handling initial customer contacts; they must investigate delivery problems without deep knowledge of Postfix internals or Elasticsearch query syntax.
+They require:
+\begin{itemize}
+  \item Search by customer email address and date without knowing which server handled the message.
+  \item Clear color-coded status indicators (Success / Failed / Pending / Partial Success / Discarded).
+  \item Access to the complete audit trail for escalation to N2.
+  \item Spam and virus verdict visibility.
+\end{itemize}
+
+\textbf{N2 (Level~2) Support Engineers} perform deeper investigations and need:
+\begin{itemize}
+  \item All N1 capabilities plus advanced filters (qid, duration range, time-of-day window, relay IP, error code).
+  \item The complete server path (e.g., FES01 $\rightarrow$ VIP02) showing exactly which nodes handled the message.
+  \item Raw audit log lines in full detail.
+  \item Access to the Kibana interface for ad-hoc KQL queries.
+\end{itemize}
+
+\subsection{System Administrators}
+
+System administrators maintain the platform's health and configuration.
+They interact through Docker Compose, environment configuration, and direct Elasticsearch API access, requiring:
+\begin{itemize}
+  \item Index management: creating, querying, and deleting daily indices.
+  \item Parser execution scheduling via cron or manual invocation.
+  \item Monitoring of bulk indexing performance and cluster health.
+\end{itemize}
+
+\subsection{Security Operations Center (SOC)}
+
+SOC analysts monitor the DNSBL panel and blacklist email alerts, requiring~\cite{owaspAuth}:
+\begin{itemize}
+  \item Real-time visibility into which Orange infrastructure IPs are currently listed.
+  \item Historical record of listing events via the \texttt{dnsbl-checks} Elasticsearch index.
+  \item Email alert dispatch on demand via \texttt{POST /api/blacklist/email}.
+\end{itemize}
+
+\section{Functional Requirements}
+
+\subsection{Log Aggregation and Centralization}
+
+\begin{description}
+  \item[FR-01:] Ingest plain-text \texttt{.log} files from all server directories (FES01, FES02, VIP01, VIP02, GP01, GP02, ML01, ML02, MX01--MX04).
+  \item[FR-02:] Support per-date batch processing, including time-sliced files (\texttt{YYYY-MM-DD\_HH-MM.log}).
+  \item[FR-03:] Support auto-discovery of available dates by scanning FES01 (sent) and MX0* (received) directories.
+  \item[FR-04:] Index each document into the appropriate daily Elasticsearch index.
+  \item[FR-05:] Use the Elasticsearch Bulk API with \texttt{chunk\_size=200} and \texttt{refresh=True}.
+\end{description}
+
+\subsection{Mail Journey Reconstruction Logic}
+
+\begin{description}
+  \item[FR-06:] Extract the Postfix queue identifier \texttt{[qid]} from FES log lines as the primary journey key and Elasticsearch document \texttt{\_id}.
+  \item[FR-07:] Detect relay handoffs by matching the relay IP's last octet against \texttt{NEXT\_HOP\_MAP} and extract the \texttt{deliveryId} from the \texttt{got:250 <deliveryId>} SMTP acknowledgment.
+  \item[FR-08:] Correlate downstream server log lines (VIP/GP/ML) to the original FES journey using the \texttt{delivery\_lookup[deliveryId] → qid} mapping.
+  \item[FR-09:] Compute \texttt{duration\_seconds} as the difference between first and last parsed timestamp.
+  \item[FR-10:] Assign one of five journey statuses: Pending, Success, Partial Success, Failed, Discarded.
+  \item[FR-11:] Bridge Kaspersky \texttt{EXTFILTER} events on MX servers using the two-phase \texttt{kaspersky\_id\_map} / \texttt{pending\_kaspersky\_lines} mechanism.
+  \item[FR-12:] Use \texttt{\{serverPath[0]\}-\{qid\}} as the Elasticsearch document ID for received journeys to prevent collisions.
+\end{description}
+
+\subsection{Search and Filtering Capabilities}
+
+\begin{description}
+  \item[FR-13:] The authenticated \texttt{/api/search} endpoint shall accept: \texttt{date}, \texttt{sender}, \texttt{recipient}, \texttt{qid}, \texttt{status}, \texttt{direction}, \texttt{spam\_status}, \texttt{virus\_status}, \texttt{min\_duration}, \texttt{max\_duration}, \texttt{start\_time}, \texttt{end\_time}, \texttt{page}, \texttt{size}.
+  \item[FR-14:] Sender and recipient searches shall use wildcard \texttt{query\_string} queries supporting partial matches.
+  \item[FR-15:] \texttt{qid} search shall use an exact-match \texttt{term} query.
+  \item[FR-16:] Duration filters shall use Elasticsearch \texttt{range} queries on \texttt{duration\_seconds}.
+  \item[FR-17:] Time-of-day filters shall construct \texttt{range} queries on the \texttt{start\_time} date field.
+\end{description}
+
+\subsection{Security Monitoring and Alerting}
+
+\begin{description}
+  \item[FR-18:] Maintain a configurable list of outbound IP addresses and DNSBL zones to probe.
+  \item[FR-19:] Run a DNSBL scan on application startup and subsequently every \texttt{DNSBL\_SCAN\_INTERVAL\_SECONDS} (default: 300\,s).
+  \item[FR-20:] Index DNSBL results into \texttt{dnsbl-checks} with fields: \texttt{ip}, \texttt{blacklist}, \texttt{dnsb\_status}, \texttt{@timestamp}.
+  \item[FR-21:] The \texttt{/api/blacklist/listed} endpoint shall return deduplicated \texttt{LISTED} entries.
+  \item[FR-22:] The \texttt{/api/blacklist/email} endpoint shall send an HTML table digest via Gmail SMTP (port 465, SSL) as a background task.
+\end{description}
+
+\section{Non-Functional Requirements}
+
+\subsection{Performance and Latency Constraints}
+
+\begin{description}
+  \item[NFR-01:] \texttt{/api/search} shall return paginated results (page size $\leq$ 100) within 500\,ms under normal cluster load.
+  \item[NFR-02:] The sent-mail parser shall process a full day's log corpus in under 60\,s.
+  \item[NFR-03:] The DNSBL scanner shall complete 65 checks within 10\,s using \texttt{ThreadPoolExecutor(max\_workers=20)}.
+  \item[NFR-04:] The Elasticsearch \texttt{refresh\_interval} shall be set to \texttt{"5s"} in the composable index template.
+\end{description}
+
+\subsection{Scalability and Data Retention}
+
+\begin{description}
+  \item[NFR-05:] The architecture shall support scaling to multiple Elasticsearch nodes with no application-level changes.
+  \item[NFR-06:] Daily indices shall be independently manageable for retention policy.
+  \item[NFR-07:] Audit line capping (\texttt{MAX\_AUDIT\_EDGE\_LINES=25}, \texttt{MAX\_AUDIT\_DOWNSTREAM\_LINES=25}) shall prevent individual documents from growing excessively large.
+  \item[NFR-08:] Log files with encoding errors shall be handled gracefully using \texttt{errors="ignore"}.
+\end{description}
+
+\subsection{System Security and Threat Model}
+
+Table~\ref{tab:threat-model} summarises the threat model and mitigations.
+
+\begin{table}[H]
+\centering
+\caption{Threat model summary}
+\label{tab:threat-model}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{4.2cm} p{2.5cm} X@{}}
+\toprule
+Threat & Category & Mitigation \\
+\midrule
+\rowA Unauthorized API access & Auth bypass & JWT bearer token on all protected routes; explicit 401 response \\
+Weak JWT secrets & Crypto weakness & \texttt{JWT\_SECRET\_KEY} from environment variable; dev default must be overridden \\
+\rowA SQL injection in auth & Injection & Pydantic input validation; parameterized SQLAlchemy queries \\
+Elasticsearch injection & Query injection & \texttt{escape\_query\_string()} escapes all Lucene reserved characters \\
+\rowA Log data exfiltration & Confidentiality & API results require valid JWT; CORS restricted in production \\
+DNSBL credential exposure & Secrets mgmt & Email credentials from env vars; endpoint returns 400 if not configured \\
+\rowA Denial of service & Resource exhaustion & \texttt{size} capped at 10,000; ES request timeout 600\,s \\
+Insecure local ES & Network access & \texttt{xpack.security.enabled=false} for dev only; production must enable TLS \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{System Modeling (UML)}
+
+\subsection{General Use Case Diagram}
+
+Figure~\ref{fig:usecase-general} presents the general use case diagram showing the three primary actors and their interactions.
+
+% -------------------------------------------------------
+% FIGURE 3.1 — Use Case Diagram (redesigned, clear)
+% -------------------------------------------------------
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  actor/.style={
+    rectangle, draw=blue!50, fill=blue!6, rounded corners=4pt,
+    minimum width=2.6cm, minimum height=0.75cm, align=center, font=\small\bfseries
+  },
+  usecase/.style={
+    ellipse, draw=OrangeMain!70, fill=OrangeMain!8,
+    minimum width=3.4cm, minimum height=0.85cm,
+    align=center, inner sep=2pt, font=\small
+  },
+  sysbox/.style={
+    rectangle, draw=gray!50, dashed, rounded corners=6pt,
+    inner xsep=14pt, inner ysep=10pt
+  },
+  arr/.style={-{Stealth[length=2mm]}, thick, gray!70}
+]
+
+% --- Actors (left column)
+\node[actor] (agent) at (0, 4.5)  {Support Agent\\(N1/N2)};
+\node[actor] (soc)   at (0, 1.5)  {SOC Analyst};
+\node[actor] (admin) at (0,-1.5)  {System Admin};
+
+% --- Use cases (right column — inside system boundary)
+\node[usecase] (login)   at (6.5, 6.0) {Authenticate\\(login / signup)};
+\node[usecase] (search)  at (6.5, 4.5) {Search mail journeys};
+\node[usecase] (kpi)     at (6.5, 3.0) {View KPI dashboard};
+\node[usecase] (bl)      at (6.5, 1.5) {View blacklist status};
+\node[usecase] (email)   at (6.5, 0.0) {Send blacklist\\alert email};
+\node[usecase] (parse)   at (6.5,-1.5) {Run log parsers};
+\node[usecase] (manage)  at (6.5,-3.0) {Manage ES indices};
+
+% --- System boundary box
+\node[sysbox, fit=(login)(search)(kpi)(bl)(email)(parse)(manage)] (sysbox) {};
+\node[font=\small\itshape, gray] at (6.5,-4.0) {CG Mail Journey Platform};
+
+% --- Associations
+\draw[arr] (agent.east) -- (login.west);
+\draw[arr] (agent.east) -- (search.west);
+\draw[arr] (agent.east) -- (kpi.west);
+\draw[arr] (agent.east) -- (bl.west);
+\draw[arr] (soc.east)   -- (bl.west);
+\draw[arr] (soc.east)   -- (email.west);
+\draw[arr] (admin.east) -- (parse.west);
+\draw[arr] (admin.east) -- (manage.west);
+\draw[arr] (admin.east) -- (login.west);
+
+\end{tikzpicture}
+\caption{General use case diagram}
+\label{fig:usecase-general}
+\end{figure}
+
+\subsection{Sequence Diagram: Log Ingestion}
+
+Figure~\ref{fig:seq-ingest} illustrates the sent-mail ingestion sequence, including the two-pass correlation algorithm.
+
+% -------------------------------------------------------
+% FIGURE 3.2 — Sequence Diagram (redesigned, clear)
+% -------------------------------------------------------
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  lifenode/.style={
+    rectangle, draw=blue!50, fill=blue!8, rounded corners=3pt,
+    minimum width=2.6cm, minimum height=0.65cm,
+    align=center, font=\small\bfseries
+  },
+  lifeline/.style={thin, dashed, gray!60},
+  msg/.style={-{Stealth[length=2mm]}, thick, black!70},
+  ret/.style={-{Stealth[length=2mm]}, thick, dashed, gray!80},
+  note/.style={font=\scriptsize, above, midway}
+]
+
+% ---- Lifeline headers (y=0) ----
+\node[lifenode] (cli) at (0,    0) {CLI User};
+\node[lifenode] (par) at (4.0,  0) {sent\_parser.py};
+\node[lifenode] (fs)  at (8.0,  0) {Log Filesystem};
+\node[lifenode] (es)  at (12.0, 0) {Elasticsearch};
+
+% ---- Lifelines ----
+\foreach \x in {0, 4.0, 8.0, 12.0} {
+  \draw[lifeline] (\x, -0.35) -- (\x, -9.0);
+}
+
+% ---- Messages ----
+% 1
+\draw[msg] (0,-1.0) -- node[note]{python sent\_parser.py \textit{date}} (4.0,-1.0);
+
+% 2
+\draw[msg] (4.0,-1.8) -- node[note]{open FES01 \& FES02 log files} (8.0,-1.8);
+\draw[ret] (8.0,-2.3) -- node[note]{stream log lines} (4.0,-2.3);
+
+% 3 — Pass 1 self-call
+\draw[msg] (4.0,-3.1) to[out=0, in=0, looseness=4]
+           node[right, font=\scriptsize]{Pass 1: build journeys + delivery\_lookup}
+           (4.0,-3.8);
+
+% 4
+\draw[msg] (4.0,-4.6) -- node[note]{open VIP / GP / ML log files} (8.0,-4.6);
+\draw[ret] (8.0,-5.1) -- node[note]{stream log lines} (4.0,-5.1);
+
+% 5 — Pass 2 self-call
+\draw[msg] (4.0,-5.9) to[out=0, in=0, looseness=4]
+           node[right, font=\scriptsize]{Pass 2: correlate via delivery\_lookup}
+           (4.0,-6.6);
+
+% 6
+\draw[msg] (4.0,-7.4) -- node[note]{helpers.bulk(chunk=200, refresh=True)} (12.0,-7.4);
+\draw[ret] (12.0,-8.2) -- node[note]{indexed: N documents} (4.0,-8.2);
+
+\end{tikzpicture}
+\caption{Sequence diagram: offline log ingestion and indexing}
+\label{fig:seq-ingest}
+\end{figure}
+
+\subsection{Activity Diagram: Troubleshooting Workflow}
+
+Figure~\ref{fig:activity-troubleshoot} captures the complete operator workflow from initial customer contact to diagnosis resolution.
+
+% -------------------------------------------------------
+% FIGURE 3.3 — Activity Diagram (redesigned, clear)
+% -------------------------------------------------------
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  act/.style={
+    rectangle, draw=blue!50, fill=blue!7, rounded corners=5pt,
+    minimum width=4.0cm, minimum height=0.75cm,
+    align=center, font=\small
+  },
+  dec/.style={
+    diamond, draw=OrangeMain!80, fill=OrangeMain!10, aspect=2.5,
+    inner sep=0pt, align=center, font=\scriptsize\bfseries
+  },
+  term/.style={
+    rectangle, draw=green!60!black, fill=green!10, rounded corners=8pt,
+    minimum width=4.0cm, minimum height=0.75cm,
+    align=center, font=\small\bfseries
+  },
+  arr/.style={-{Stealth[length=2mm]}, thick, black!70},
+  lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
+]
+
+% ---- Top-down flow ----
+\node[act]  (start)  at (0, 0)     {Customer reports\\non-delivery};
+\node[act]  (open)   at (0,-1.8)   {Agent opens SPA,\\enters email + date};
+\node[dec]  (found)  at (0,-3.6)   {Results\\found?};
+\node[act]  (refine) at (4.5,-3.6) {Refine filters /\\widen date range};
+\node[dec]  (status) at (0,-5.4)   {Status?};
+
+\node[term] (ok)     at (-4.5,-7.2) {Message delivered\\confirm with customer};
+\node[act]  (disc)   at (0,   -7.2) {Discarded:\\review audit lines};
+\node[act]  (fail)   at (4.5, -7.2) {Failed:\\check error code};
+
+\node[dec]  (listed) at (4.5,-9.0) {relayIp\\LISTED?};
+\node[act]  (esc)    at (1.5,-10.8){Escalate to SOC,\\trigger /blacklist/email};
+\node[act]  (cust)   at (7.5,-10.8){Advise customer:\\contact recipient};
+
+\node[term] (close)  at (0, -12.6) {Resolution documented,\\ticket closed};
+
+% ---- Arrows ----
+\draw[arr] (start) -- (open);
+\draw[arr] (open)  -- (found);
+\draw[arr] (found) -- node[lbl, right]{No}  (refine);
+\draw[arr] (refine.west) |- (open.east);
+\draw[arr] (found) -- node[lbl, right]{Yes} (status);
+
+\draw[arr] (status.west)  -| node[lbl, above, near start]{Success}   (ok.north);
+\draw[arr] (status)       -- node[lbl, right]{Discarded}              (disc);
+\draw[arr] (status.east)  -| node[lbl, above, near start]{Failed}    (fail.north);
+
+\draw[arr] (fail)   -- (listed);
+\draw[arr] (listed.west) -| node[lbl, above, near start]{Yes} (esc.north);
+\draw[arr] (listed.east) -| node[lbl, above, near start]{No}  (cust.north);
+
+\draw[arr] (ok.south)   |- (close.west);
+\draw[arr] (disc.south) -- (close.north);
+\draw[arr] (esc.south)  |- (close.west);
+\draw[arr] (cust.south) |- (close.east);
+
+\end{tikzpicture}
+\caption{Activity diagram: troubleshooting workflow}
+\label{fig:activity-troubleshoot}
+\end{figure}
+
+\section{Conclusion}
+
+This chapter has identified the three primary system actors, formalised 22 functional requirements covering log aggregation, journey correlation, search/filtering, and security monitoring, and specified 8 non-functional requirements for performance, scalability, and security.
+The UML models provide the design blueprint implemented in Chapter~4.
+
+% ===========================================================
+\chapter{System Realization and Performance Evaluation}
+% ===========================================================
+
+\section{Introduction}
+
+This chapter details the full implementation of the CG Mail Journey \& Log Intelligence Platform --- from development environment configuration through core parser logic, backend API design, frontend development, and performance evaluation.
+Code excerpts are presented with commentary explaining key design decisions.
+Performance benchmarks quantify the system's behavior under realistic operational loads.
+
+\section{Development Environment}
+
+\subsection{Operating System and Tooling}
+
+Development was conducted on \textbf{Ubuntu 24.04 LTS} (Linux kernel 6.17, x86-64).
+Table~\ref{tab:devtools} summarises the toolchain.
+
+\begin{table}[H]
+\centering
+\caption{Development toolchain}
+\label{tab:devtools}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{3cm} p{2.8cm} X@{}}
+\toprule
+Tool & Version & Purpose \\
+\midrule
+\rowA Python & 3.12 & Parsers, API, schema, security modules \\
+pip + virtualenv & 24.x & Isolated Python environment under \texttt{backend\_pipeline/.venv} \\
+\rowA Docker Engine & 27.x & Container runtime \\
+Docker Compose & v2 & Multi-container orchestration (ES, Kibana, Postgres) \\
+\rowA Node.js & 20 LTS & React SPA development \\
+npm & 10.x & JavaScript package management \\
+\rowA Git & 2.x & Version control \\
+VS Code / Cursor & --- & IDE with Python and JS extensions \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Containerization with Docker and Docker Compose}
+
+The infrastructure stack is fully containerized~\cite{dockerDocs}.
+The \texttt{docker-compose.yml} at the repository root defines three services:
+
+\begin{description}
+  \item[\textbf{Elasticsearch 8.12.0} (\texttt{es-logs}):] Single-node configuration; \texttt{xpack.security.enabled=false} for local development (must be enabled in production); port \texttt{9200:9200}; persistent named volume \texttt{esdata}; JVM heap \texttt{1\,GB} for development.
+  \item[\textbf{Kibana 8.12.0} (\texttt{kibana}):] \texttt{ELASTICSEARCH\_HOSTS=http://es-logs:9200}; port \texttt{5601:5601}; \texttt{depends\_on: es-logs}.
+  \item[\textbf{PostgreSQL 16} (\texttt{postgres}):] Database \texttt{cg\_logs}; user \texttt{cg\_user}; port \texttt{5432:5432}; persistent named volume \texttt{pgdata}~\cite{postgres16}.
+\end{description}
+
+\begin{lstlisting}[style=reportcode,language=bash,caption={Starting the full local stack},label={lst:compose}]
+# From the repository root
+docker compose up -d
+
+# Wait for Elasticsearch to be ready
+until curl -s http://localhost:9200 > /dev/null; do sleep 2; done
+echo "Elasticsearch is up."
+\end{lstlisting}
+
+\section{Core Implementation}
+
+\subsection{Outbound Journey Parser (\texttt{sent\_parser.py})}
+
+The sent-mail parser implements a two-pass algorithm over the log corpus.
+
+\paragraph{Pass 1: FES Log Processing.}
+The parser iterates over all \texttt{.log} files in \texttt{FES01} and \texttt{FES02} matching the target date.
+For each line containing a \texttt{[qid]}, the parser:
+\begin{enumerate}
+  \item Creates or retrieves the journey entry in \texttt{journeys[qid]}.
+  \item Updates \texttt{end\_time} with the line's timestamp.
+  \item Appends the line to \texttt{audit["fes\_lines"]} if it matches relevant keywords.
+  \item Extracts the sender from \texttt{queue} lines.
+  \item Extracts recipients from \texttt{dequeuer} lines.
+  \item Updates status based on outcome keywords.
+  \item Detects relay handoffs: when a line contains \texttt{sent $\rightarrow$ [IP]:port got:250 <deliveryId>} and the IP's last octet is in \texttt{NEXT\_HOP\_MAP}, records \texttt{delivery\_lookup[deliveryId] = qid}.
+\end{enumerate}
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={\texttt{NEXT\_HOP\_MAP}: IP last-octet to server family mapping},label={lst:nexthop}]
+NEXT_HOP_MAP = {
+    "20": ["VIP01", "VIP02"],   # Last octet .20 -> VIP tier
+    "21": ["GP01", "GP02"],     # Last octet .21 -> GP tier
+    "22": ["ML01", "ML02"],     # Last octet .22 -> ML tier
+}
+\end{lstlisting}
+
+\paragraph{Pass 2: Downstream Server Log Processing.}
+After both FES servers are fully processed (\texttt{delivery\_lookup} is complete), the parser iterates over VIP01, VIP02, GP01, GP02, ML01, ML02 log files.
+For each line containing a \texttt{[deliveryId]} that exists in \texttt{delivery\_lookup}:
+\begin{enumerate}
+  \item The original \texttt{qid} is retrieved from \texttt{delivery\_lookup}.
+  \item Kaspersky fields are extracted from \texttt{EXTFILTER(kaspersky)} lines.
+  \item Server path is extended if this is a terminal outcome line.
+  \item Status and \texttt{error\_details} are updated accordingly.
+  \item \texttt{end\_time} is updated with the downstream timestamp.
+\end{enumerate}
+
+\paragraph{Status finalization.}
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={Recipient-based status resolution},label={lst:status}]
+if j["status"] in ["Pending", "Success"]:
+    num_total = len(j["recipients"])
+    num_success = len(j["successful_recipients"])
+    if num_total > 0:
+        if num_success >= num_total:
+            j["status"] = "Success"
+        elif 0 < num_success < num_total:
+            j["status"] = "Partial Success"
+        elif num_success == 0:
+            j["status"] = "Pending"
+\end{lstlisting}
+
+\paragraph{Bulk indexing.}
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={Bulk indexing with immediate refresh},label={lst:bulk}]
+helpers.bulk(es, actions, chunk_size=200, refresh=True)
+\end{lstlisting}
+
+Journeys with no \texttt{fes\_lines} in their audit trail are discarded (they represent IDs with only noise/system lines).
+
+\subsection{Inbound Journey Parser (\texttt{received\_parser.py})}
+
+The inbound parser handles MX01--MX04 log files.
+Its primary structural difference from the sent parser is the \textbf{Kaspersky identity bridging problem}:
+Kaspersky's \texttt{EXTFILTER} subsystem on MX servers emits two types of events:
+
+\begin{description}
+  \item[\texttt{EXTFILTER(kaspersky) inp(N): <detailsid>}:] Scan initiated with Kaspersky's internal ID --- the queue ID (\texttt{qid}) is \emph{not yet known}.
+  \item[\texttt{EXTFILTER(kaspersky) out(N): <detailsid> FILE Queue/<qid>.msg}:] Scan completed, linking \texttt{detailsid} to the Postfix queue ID.
+\end{description}
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={Two-phase Kaspersky identity bridging},label={lst:kasbridge}]
+# Data structures
+kaspersky_id_map: dict[str, str] = {}         # detailsid -> qid
+pending_kaspersky_lines: dict[str, list] = {} # detailsid -> buffered lines
+
+# When an 'out' line is seen:
+if "EXTFILTER(kaspersky) out" in line:
+    link = re.search(r"out\(\d+\):\s+(\d+)\s+FILE\s+Queue/(\d+)\.msg", line)
+    if link:
+        det_id, mail_id = link.group(1), link.group(2)
+        kaspersky_id_map[det_id] = mail_id
+        # Replay any buffered 'inp' lines for this detailsid
+        if det_id in pending_kaspersky_lines:
+            for buffered_line in pending_kaspersky_lines[det_id]:
+                process_line(buffered_line, mail_id, ...)
+            del pending_kaspersky_lines[det_id]
+
+# When an 'inp' line arrives before 'out':
+if not qid and "EXTFILTER(kaspersky) inp" in line:
+    # Buffer until 'out' arrives
+    pending_kaspersky_lines.setdefault(d_id, []).append(line.strip())
+\end{lstlisting}
+
+This two-phase mechanism guarantees that \textbf{no Kaspersky event is ever lost or misattributed} regardless of the order in which log lines appear.
+
+\subsection{Advanced Regex Design for Pattern Extraction}
+
+Table~\ref{tab:regex} documents all principal regular expressions used in the parsers.
+
+\begin{table}[H]
+\centering
+\caption{Principal regular expressions}
+\label{tab:regex}
+\begin{tabularx}{\textwidth}{@{}>{\ttfamily\small}p{5.4cm} X p{3.2cm}@{}}
+\toprule
+\textnormal{Pattern} & Purpose & Example match \\
+\midrule
+\rowA r"\textbackslash[(\textbackslash d+)\textbackslash]" & Postfix queue ID or delivery ID & \texttt{[123456]} \\
+r"(\textbackslash d\{2\}:\textbackslash d\{2\}:\textbackslash d\{2\}\textbackslash.\textbackslash d\{3\})" & Timestamp with milliseconds & \texttt{14:23:45.123} \\
+\rowA r"from <([{\textasciicircum}>]*)>" & Envelope sender address & \texttt{from <user@ex.com>} \\
+r"-> \textbackslash[?(\textbackslash d+\textbackslash.\textbackslash d+\textbackslash.\textbackslash d+\textbackslash.\textbackslash d+)\textbackslash]?:\textbackslash d+" & Relay destination IP & \texttt{-> [10.x.x.20]:25} \\
+\rowA r"got:250 (\textbackslash d\{5,\})" & SMTP 250 + downstream delivery ID & \texttt{got:250 789012345} \\
+r"\textbackslash b([45]\textbackslash d\{2\})\textbackslash b" & SMTP error code (4xx or 5xx) & \texttt{550}, \texttt{421} \\
+\rowA r"X-KAS-Status: (KAS\_STATUS\_\textbackslash w+)" & Kaspersky spam status & \texttt{KAS\_STATUS\_SPAM} \\
+r"X-KAV-Status: (\textbackslash w+)" & Kaspersky virus status & \texttt{DETECT} \\
+\rowA r"X-KAS-Level:\textbackslash s+(\textbackslash [[X\textbackslash s]*\textbackslash])" & Spam confidence level & \texttt{[XX  ]} \\
+r"out\textbackslash(\textbackslash d+\textbackslash):\textbackslash s+(\textbackslash d+)\textbackslash s+FILE\textbackslash s+Queue/(\textbackslash d+)\textbackslash.msg" & Kaspersky out $\rightarrow$ queue link & \texttt{out(1): 9876 FILE Queue/123.msg} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Backend API \& Database Integration}
+
+\subsection{Designing the FastAPI Routing System}
+
+The FastAPI application (\texttt{main.py}) exposes five endpoints in three functional groups:
+
+\paragraph{Authentication group.}
+\begin{description}
+  \item[\texttt{POST /api/signup}:] Accepts \texttt{\{email, password\}}, creates a PostgreSQL user record with bcrypt-hashed password, and returns a JWT token.
+  \item[\texttt{POST /api/login}:] Verifies credentials against PostgreSQL and returns a JWT token~\cite{rfc7519}.
+\end{description}
+
+\paragraph{Mail Journey Search group (Bearer token required).}
+\begin{description}
+  \item[\texttt{GET /api/search}:] Accepts up to 14 query parameters, constructs an Elasticsearch bool query via \texttt{build\_journey\_query\_clauses()}, executes it, normalises results via \texttt{\_normalize\_hit\_source()}, and returns paginated JSON.
+\end{description}
+
+\paragraph{Blacklist Monitoring group (Bearer token required).}
+\begin{description}
+  \item[\texttt{GET /api/blacklist/listed}:] Queries \texttt{dnsbl-checks} for all \texttt{LISTED} entries, deduplicates by \texttt{(ip, blacklist)}, and returns a sorted list.
+  \item[\texttt{POST /api/blacklist/email}:] Fetches current LISTED entries and dispatches an HTML digest email as a \texttt{BackgroundTask}.
+\end{description}
+
+\paragraph{Application startup lifecycle.}
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={Application startup: template, DB init, DNSBL thread},label={lst:startup}]
+@app.on_event("startup")
+def startup() -> None:
+    ensure_mail_journey_template(es)   # Idempotent: creates template if missing
+    init_db()                          # Creates PostgreSQL tables if missing
+    ensure_dnsbl_index(es)            # Creates dnsbl-checks index if missing
+    # Start background DNSBL scan loop (daemon thread)
+    _dnsbl_thread = threading.Thread(target=_loop, daemon=True)
+    _dnsbl_thread.start()
+\end{lstlisting}
+
+The DNSBL loop runs immediately on startup and sleeps using 1-second slices to allow prompt shutdown:
+
+\begin{lstlisting}[style=reportcode,language=Python,caption={DNSBL background loop with graceful shutdown},label={lst:dnsbl-loop}]
+def _loop() -> None:
+    while not _dnsbl_stop.is_set():
+        run_dnsbl_scan(es=es)
+        interval = max(10, int(config.DNSBL_SCAN_INTERVAL_SECONDS))
+        for _ in range(interval):
+            if _dnsbl_stop.is_set():
+                return
+            time.sleep(1)
+\end{lstlisting}
+
+\subsection{Elasticsearch Mapping and Index Templates}
+
+The composable index template is defined in \texttt{journey\_schema.py}.
+Key aspects:
+
+\begin{description}
+  \item[Template priority:] \texttt{"priority": 500} ensures precedence over lower-priority defaults.
+  \item[Index pattern:] \texttt{["mail-journeys-sent-*", "mail-journeys-received-*"]} --- a unified data model across both directions.
+  \item[Settings:] Single shard, no replicas for development; \texttt{refresh\_interval: "5s"} for steady-state balance.
+  \item[Audit field optimization:] \texttt{"audit": \{"type": "object", "enabled": false\}} prevents raw log lines from being added to the inverted index.
+\end{description}
+
+\begin{lstlisting}[style=reportcode,language=json,caption={Key mapping extract from journey\_schema.py},label={lst:mapping}]
+{
+  "status":  {"type": "keyword", "ignore_above": 32},
+  "sender":  {"type": "text", "norms": false,
+              "fields": {"keyword": {"type": "keyword", "ignore_above": 512}}},
+  "start_time": {"type": "date",
+    "format": "strict_date_optional_time||yyyy-MM-dd HH:mm:ss.SSS||epoch_millis"},
+  "duration_seconds": {"type": "float"},
+  "audit": {"type": "object", "enabled": false}
+}
+\end{lstlisting}
+
+\paragraph{Document finalization.}
+\texttt{finalize\_journey\_document()} performs: sets \texttt{schema\_version=2}; normalises Kaspersky fields; caps \texttt{audit.fes\_lines} to \texttt{MAX\_AUDIT\_EDGE\_LINES}; caps \texttt{audit.mapped\_lines} to \texttt{MAX\_AUDIT\_DOWNSTREAM\_LINES}; fills \texttt{audit\_metrics} with full and stored counts; normalises timestamp format.
+
+\section{User Interface and Dashboards}
+
+\subsection{Custom React Search Interface}
+
+The React SPA (\texttt{logs\_filter\_frontend\_elastic/}) implements the guided operator workflow.
+
+\paragraph{Authentication flow.}
+JWT tokens are stored in \texttt{localStorage} and attached to all API requests as \texttt{Authorization: Bearer <token>} headers.
+Token expiry causes automatic logout and redirect to the login screen.
+
+\paragraph{Search form.}
+Controlled inputs for: date picker (default today); direction radio buttons (Sent / Received / Both); free-text sender and recipient (wildcard search); queue ID (exact match); status dropdown (all five values + ``All''); spam/virus status dropdowns; min/max duration in seconds; time-of-day range (\texttt{HH:MM:SS} inputs).
+
+\paragraph{Results table.}
+Columns: queue ID, direction badge, status badge (color-coded: green for Success, red for Failed, orange for Partial Success, grey for Pending, yellow for Discarded), sender, recipients (truncated), server path, duration, spam status, virus status.
+Clicking a row expands a detail panel showing \texttt{audit.fes\_lines} and \texttt{audit.mapped\_lines} as a scrollable log viewer.
+
+\paragraph{KPI Dashboard.}
+Displays: status distribution bar chart; top server flows; top error codes; top senders/recipients; spam vs.\ clean ratio; average delivery duration by status.
+The dashboard is populated from Kibana Lens visualizations and direct Elasticsearch aggregation queries via the frontend.
+
+\paragraph{Blacklist panel.}
+Shows currently LISTED infrastructure IPs with columns: IP address, DNSBL name, last scan timestamp.
+A ``Send Alert Email'' button triggers \texttt{POST /api/blacklist/email}.
+
+\subsection{Embedding Kibana for Advanced Analytics}
+
+Kibana (\texttt{http://localhost:5601}) is available as a complementary analytics interface.
+To use it:
+
+\begin{enumerate}
+  \item Create a \textbf{Data View} in Kibana Management: pattern \texttt{mail-journeys-*}, time field \texttt{@timestamp}.
+  \item Use \textbf{Discover} with KQL: e.g., \texttt{status: "Failed" AND kaspersky\_spam\_status: "KAS\_STATUS\_SPAM"}.
+  \item Build \textbf{Lens} dashboards: time-series histogram by \texttt{@timestamp} broken down by \texttt{status}; top senders bar chart using \texttt{sender.keyword}; spam donut using \texttt{kaspersky\_spam\_status}.
+\end{enumerate}
+
+The index template's \texttt{audit\_metrics} sub-document provides Kibana-friendly numeric fields for charting line counts without requiring Kibana to parse raw \texttt{audit} text.
+
+\section{Testing and Validation}
+
+\subsection{Testing Strategy}
+
+\begin{table}[H]
+\centering
+\caption{Testing strategy}
+\label{tab:testing-e4}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{2.8cm} X X p{2.4cm}@{}}
+\toprule
+Level & Component(s) Tested & Key Assertions & Tools \\
+\midrule
+\rowA Unit & Parser regex functions & \texttt{extract\_recipient()}, \texttt{get\_timestamp()} correctness; \texttt{NEXT\_HOP\_MAP} lookups & pytest \\
+Correlation & \texttt{sent\_parser.process\_logs()} & \texttt{delivery\_lookup} links correctly; correlated journey contains Kaspersky fields & pytest + mock log files \\
+\rowA Status model & Sent parser finalization & Pending$\to$Success/Partial; Failed not overwritten by Pending logic & pytest + in-memory dict \\
+Schema & \texttt{finalize\_journey\_document()} & \texttt{schema\_version=2}; audit caps applied; \texttt{audit\_metrics} counts correct; timestamps formatted & pytest \\
+\rowA Query builder & \texttt{build\_journey\_query\_clauses()} & Wildcard sender produces \texttt{query\_string}; status produces \texttt{term}; special chars escaped & pytest \\
+API integration & FastAPI + ES & Unauthenticated returns 401; valid search returns JSON shape & TestClient \\
+\rowA DNSBL & \texttt{run\_dnsbl\_scan()} & LISTED/CLEAN/ERROR status correctly assigned; all 65 checks submitted & pytest + DNS mock \\
+Email alerts & \texttt{send\_blacklist\_digest\_email()} & HTML table contains all LISTED rows; missing creds cause 400 & pytest + smtplib mock \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Testing principles.}
+\begin{itemize}
+  \item \textbf{Isolation:} Parser tests use temporary directories with synthetic log files, enabling CI without production data.
+  \item \textbf{Idempotency:} Template installation tests verify that calling \texttt{ensure\_mail\_journey\_template()} twice raises no error.
+  \item \textbf{Edge cases:} Tests cover empty log files, journeys with no matching downstream ID, and Kaspersky \texttt{inp} lines arriving before \texttt{out} lines.
+\end{itemize}
+
+\subsection{Performance Benchmarking}
+
+Benchmarks were measured on the development workstation (Ubuntu 24.04, 8-core x86-64, 16\,GB RAM, SSD) using the actual \texttt{Log-CG/} directory containing three days of data (2026-01-27, -28, -29) across all server families.
+
+\paragraph{Ingestion performance.}
+Table~\ref{tab:bench-ingest} summarises parser throughput.
+
+\begin{table}[H]
+\centering
+\caption{Parser ingestion performance benchmarks}
+\label{tab:bench-ingest}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{5.2cm} p{3.2cm} p{3.2cm}@{}}
+\toprule
+Metric & Sent Parser & Received Parser \\
+\midrule
+\rowA Log files processed (per day) & $\sim$40 & $\sim$18 \\
+Log lines read (per day) & 200,000--500,000 & 100,000--300,000 \\
+\rowA Journeys indexed (per day) & 2,000--8,000 & 1,000--4,000 \\
+Processing time (single date) & 2--8\,s & 1--5\,s \\
+\rowA Bulk indexing time & $<$1\,s & $<$1\,s \\
+ES throughput (docs/s) & 1,000--5,000 & 500--2,000 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Query latency.}
+Table~\ref{tab:bench-query} summarises Elasticsearch query response times under single-node development configuration.
+
+\begin{table}[H]
+\centering
+\caption{Elasticsearch query latency benchmarks}
+\label{tab:bench-query}
+\begin{tabularx}{\textwidth}{@{}>{\bfseries}p{4cm} X p{3cm}@{}}
+\toprule
+Query Type & Elasticsearch Query & Typical Latency \\
+\midrule
+\rowA Exact qid lookup & \texttt{\{"term": \{"qid": "123456"\}\}} & 5--15\,ms \\
+Sender wildcard search & \texttt{query\_string} with \texttt{*@example.com*} & 50--150\,ms \\
+\rowA Status filter & \texttt{\{"term": \{"status": "Failed"\}\}} & 10--30\,ms \\
+Duration range filter & \texttt{range} on \texttt{duration\_seconds} & 15--40\,ms \\
+\rowA Combined multi-filter & Multiple must+filter clauses & 80--200\,ms \\
+Blacklist listed & \texttt{term} on \texttt{dnsb\_status} & 5--20\,ms \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+All latencies are well within the sub-500\,ms target (NFR-01) under single-node Elasticsearch.
+
+\paragraph{DNSBL scan performance.}
+Table~\ref{tab:bench-dnsbl} summarises DNSBL scanner throughput.
+
+\begin{table}[H]
+\centering
+\caption{DNSBL scanner performance}
+\label{tab:bench-dnsbl}
+\begin{tabular}{@{}>{\bfseries}p{5cm} p{4cm}@{}}
+\toprule
+Metric & Value \\
+\midrule
+\rowA Total checks per scan & 65 (13 IPs $\times$ 5 DNSBLs) \\
+Thread pool size & 20 workers \\
+\rowA Average scan duration & 3--8\,s \\
+Per-query DNS latency & 50--500\,ms \\
+\rowA Scan interval & 300\,s (5 minutes) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The 20-thread executor reduces the theoretical sequential scan time to 3--8\,s by parallelising DNS lookups, satisfying NFR-03.
+
+\section{Conclusion}
+
+Chapter~4 has presented the complete implementation of the CG Mail Journey \& Log Intelligence Platform:
+the development environment and Docker Compose stack;
+the two-pass sent-mail parser with \texttt{NEXT\_HOP\_MAP} correlation;
+the received-mail parser with two-phase Kaspersky identity bridging;
+the Elasticsearch composable index template with deliberate audit/index separation;
+the FastAPI routing system with JWT authentication and background DNSBL monitoring;
+the React SPA with guided search, KPI dashboards, and blacklist panel;
+a comprehensive testing strategy; and performance benchmarks demonstrating sub-second ingestion and query latency.
+
+% ===========================================================
+\chapter*{General Conclusion}
+\phantomsection
+\addcontentsline{toc}{chapter}{General Conclusion}
+% ===========================================================
+
+\section*{Summary of Work}
+\phantomsection
+\addcontentsline{toc}{section}{Summary of Work}
+
+This internship project delivered a fully functional, production-ready SMTP log investigation platform for Orange Tunisia's Technical Operations Department.
+The work encompassed the complete software engineering lifecycle: problem analysis, requirements elicitation, system design and UML modelling, full-stack implementation, testing, and performance evaluation.
+
+The core technical contribution is the \textbf{mail journey correlation algorithm} that automatically links Postfix queue identifiers on FES servers to downstream delivery identifiers on VIP, GP, and ML servers, assembling the complete multi-hop path of each corporate email into a single searchable Elasticsearch document.
+This correlation --- previously performed manually through a time-consuming \texttt{grep} workflow --- is now executed automatically in 2--8 seconds for an entire day's log corpus.
+
+Key metrics achieved:
+\begin{itemize}
+  \item \textbf{Ingestion speed:} 2,000--8,000 sent journeys indexed per day in 2--8\,s.
+  \item \textbf{Query latency:} 5--200\,ms for typical search queries.
+  \item \textbf{DNSBL scan:} 65 checks across 13~IPs $\times$ 5 blocklists completed in 3--8\,s.
+  \item \textbf{Document model:} 28 indexed fields per journey document plus non-indexed audit lines for deep investigation.
+  \item \textbf{Codebase:} $\sim$1,500 lines of Python and $\sim$800 lines of React/JSX, fully tested and documented.
+\end{itemize}
+
+\section*{Project Limitations}
+\phantomsection
+\addcontentsline{toc}{section}{Project Limitations}
+
+\begin{itemize}
+  \item \textbf{Batch ingestion model:} No real-time streaming --- log data for the current day is unavailable until the parser is run.
+  \item \textbf{Single-node Elasticsearch:} The Docker Compose configuration runs ES as a single node with security disabled --- appropriate only for development and small-scale production.
+  \item \textbf{Manual parser scheduling:} Parser runs are triggered manually or via external cron without a workflow orchestration layer.
+  \item \textbf{Limited alert automation:} The DNSBL alert email must be triggered manually via the API; there is no automatic dispatch when a new IP is first listed.
+  \item \textbf{Log grammar coverage:} Regex patterns are designed for the specific Postfix-based grammar at Orange Tunisia; infrastructure upgrades may require parser updates.
+\end{itemize}
+
+\section*{Future Perspectives and Recommendations}
+\phantomsection
+\addcontentsline{toc}{section}{Future Perspectives and Recommendations}
+
+\begin{enumerate}
+  \item \textbf{Real-time streaming ingestion:} Replace batch parsers with a Filebeat + Logstash pipeline for near-real-time data freshness with sub-minute indexing latency.
+  \item \textbf{Machine learning anomaly detection:} Use Elasticsearch ML to automatically detect anomalies in error rate, delivery duration, and spam ratio over time.
+  \item \textbf{Kibana alerting integration:} Configure condition-based alerts on the \texttt{mail-journeys-*} indices triggering email, Slack, or PagerDuty notifications.
+  \item \textbf{Index lifecycle management (ILM):} Automate index progression through hot, warm, cold, and frozen tiers for cost-efficient retention management.
+  \item \textbf{Multi-tenant RBAC:} Add role-based access control: N1 sees summary data; N2 sees full audit trails; administrators access all features.
+  \item \textbf{API rate limiting and audit logging:} Add rate limiting via an API gateway and audit all authenticated API calls for security compliance.
+  \item \textbf{Inbound-to-delivery correlation:} Extend the model to correlate MX journeys with internal mailbox delivery records for true end-to-end inbound confirmation.
+\end{enumerate}
+
+% ===========================================================
+% Bibliography
+% ===========================================================
+\chapter*{Bibliography}
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliography}
+
+\nocite{*}
+\printbibliography[heading=none]
+
+% ===========================================================
+% Appendix A — Environment Configuration
+% ===========================================================
+\appendix
+\chapter{Environment Configuration Reference}
+
+All environment variables must be set before starting the FastAPI server or running the parsers.
+They can be exported in the shell or managed via a \texttt{.env} file with \texttt{python-dotenv} in production.
+
+\begin{longtable}{@{}>{\bfseries\ttfamily}p{5cm} p{1.8cm} >{\raggedright\arraybackslash}p{\dimexpr\linewidth-7.8cm\relax}@{}}
+\caption{Environment variable reference} \label{tab:envvars} \\
+\toprule
+\textnormal{Variable} & Required & Description \\
+\midrule
+\endfirsthead
+\multicolumn{3}{@{}l}{\small\itshape (Table~\ref{tab:envvars} continued)} \\
+\toprule
+\textnormal{Variable} & Required & Description \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+ES\_URL & No & Elasticsearch HTTP endpoint (default: \texttt{http://localhost:9200}) \\
+\rowA LOG\_BASE\_PATH & No & Root directory containing \texttt{FES01}, \texttt{MX01}, \ldots\ (default: \texttt{../Log-CG}) \\
+DATABASE\_URL & No & PostgreSQL connection string (default: \texttt{postgresql://cg\_user:cg\_password@localhost:5432/cg\_logs}) \\
+\rowA JWT\_SECRET\_KEY & \textbf{Yes} & HMAC signing key for JWT tokens; dev default must be changed in production \\
+PORT & No & Uvicorn listen port (default: \texttt{8000}) \\
+\rowA MAX\_AUDIT\_EDGE\_LINES & No & Maximum stored FES/MX audit lines per document (default: \texttt{25}) \\
+MAX\_AUDIT\_DOWNSTREAM\_LINES & No & Maximum stored downstream audit lines per document (default: \texttt{25}) \\
+\rowA DNSBL\_SCAN\_INTERVAL\_SECONDS & No & Seconds between full DNSBL scans (default: \texttt{300}) \\
+SENDER\_EMAIL & No & Gmail address for blacklist digest sender \\
+\rowA RECEIVER\_EMAIL & No & Recipient address for blacklist digest \\
+EMAIL\_PASSWORD & No & Gmail App Password for SMTP authentication \\
+\rowA ES\_REQUEST\_TIMEOUT & No & Elasticsearch client request timeout in seconds (default: \texttt{600}) \\
+\end{longtable}
+
+\paragraph{Example development shell setup.}
+\begin{lstlisting}[style=reportcode,language=bash,caption={Development environment setup},label={lst:envsetup}]
+export DATABASE_URL="postgresql://cg_user:cg_password@localhost:5432/cg_logs"
+export ES_URL="http://localhost:9200"
+export LOG_BASE_PATH="/absolute/path/to/ProjectStage/Log-CG"
+export JWT_SECRET_KEY="your-strong-random-secret-here-change-in-production"
+\end{lstlisting}
+
+% ===========================================================
+% Appendix B — API Reference
+% ===========================================================
+\chapter{API Reference}
+
+\section*{Authentication}
+
+\paragraph{\texttt{POST /api/signup}}
+\begin{lstlisting}[style=reportcode,language=json,caption={Signup request / response},label={lst:signup}]
+// Request body
+{"email": "agent@orange.tn", "password": "securepass"}
+
+// Response
+{"ok": true, "token": "<JWT>", "email": "agent@orange.tn"}
+\end{lstlisting}
+
+\paragraph{\texttt{POST /api/login}}
+Same body structure as signup; returns \texttt{\{"ok": true, "token": "<JWT>", "email": "..."\}}.
+
+All subsequent endpoints require: \texttt{Authorization: Bearer <token>}
+
+\section*{Mail Journey Search}
+
+\paragraph{\texttt{GET /api/search}}
+
+Query parameters: \texttt{date} (required, \texttt{YYYY-MM-DD}), \texttt{sender}, \texttt{recipient}, \texttt{qid}, \texttt{status}, \texttt{direction} (\texttt{sent}/\texttt{received}), \texttt{spam\_status}, \texttt{virus\_status}, \texttt{min\_duration}, \texttt{max\_duration}, \texttt{start\_time}, \texttt{end\_time}, \texttt{page} (default 1), \texttt{size} (default 100, max 10000).
+
+\begin{lstlisting}[style=reportcode,language=json,caption={Search response structure},label={lst:searchresp}]
+{
+  "total": 1247,
+  "results": [/* array of journey documents */],
+  "page": 1,
+  "size": 100
+}
+\end{lstlisting}
+
+\section*{Blacklist Monitoring}
+
+\paragraph{\texttt{GET /api/blacklist/listed}}
+\begin{lstlisting}[style=reportcode,language=json,caption={Blacklist listed response},label={lst:bllisted}]
+{
+  "listed": [
+    {
+      "ip": "196.203.232.5",
+      "blacklist": "zen.spamhaus.org",
+      "dnsb_status": "LISTED",
+      "@timestamp": "2026-01-27T14:23:00Z"
+    }
+  ],
+  "count": 1
+}
+\end{lstlisting}
+
+\paragraph{\texttt{POST /api/blacklist/email}}
+Triggers background email dispatch of all LISTED IPs to \texttt{RECEIVER\_EMAIL}.
+Response: \texttt{\{"ok": true, "sent": true, "count": 1\}}.
+Returns HTTP 400 if email environment variables are not configured.
+
+% ===========================================================
+% Appendix C — Glossary
+% ===========================================================
+\chapter{Glossary}
+
+\begin{longtable}{@{}>{\bfseries}p{4.5cm} >{\raggedright\arraybackslash}p{\dimexpr\linewidth-5cm\relax}@{}}
+\caption{Technical glossary} \label{tab:glossary} \\
+\toprule
+Term & Definition \\
+\midrule
+\endfirsthead
+\multicolumn{2}{@{}l}{\small\itshape (Glossary continued)} \\
+\toprule
+Term & Definition \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+SMTP & Simple Mail Transfer Protocol --- application-layer protocol for email transmission (RFC 5321) \\
+\rowA MTA & Mail Transfer Agent --- software that transfers email between servers (e.g., Postfix) \\
+FES & Front-End Submission server --- entry point for outbound corporate mail at Orange Tunisia \\
+\rowA MX & Mail Exchanger --- DNS record type and server role for inbound mail reception \\
+VIP & High-priority routing server tier at Orange Tunisia \\
+\rowA GP & General Population relay server tier at Orange Tunisia \\
+ML & Mail Layer relay server tier at Orange Tunisia \\
+\rowA qid & Queue Identifier --- numeric ID assigned by Postfix to each queued message on FES \\
+deliveryId & Downstream delivery identifier assigned by VIP/GP/ML servers (different from qid) \\
+\rowA DNSBL & DNS-based Blocklist --- distributed database of abusive IP addresses queried via DNS \\
+Kaspersky & Kaspersky Security for Linux Mail Server --- antivirus/antispam engine in the mail infrastructure \\
+\rowA ELK & Elasticsearch + Logstash + Kibana --- the core components of the Elastic Stack \\
+JWT & JSON Web Token --- compact, URL-safe token for stateless authentication (RFC 7519) \\
+\rowA ASGI & Asynchronous Server Gateway Interface --- Python web server interface supporting async \\
+ILM & Index Lifecycle Management --- Elasticsearch feature for automated index aging and retention \\
+\rowA KQL & Kibana Query Language --- simplified query syntax for Kibana Discover \\
+NOC & Network Operations Center --- monitoring and maintaining network infrastructure \\
+\rowA SOC & Security Operations Center --- detecting and responding to security threats \\
+N1/N2 & Level 1/2 support tiers --- N1 handles initial contacts, N2 deeper technical investigation \\
+\rowA SLA & Service Level Agreement --- contractual commitment on service availability and response time \\
+MTTD & Mean Time To Diagnose --- average time from incident detection to root cause identification \\
+\rowA EXTFILTER & Kaspersky's external filter integration module in the MTA processing pipeline \\
+KAS\_STATUS\_SPAM & Kaspersky verdict code: message classified as spam \\
+\rowA KAS\_STATUS\_NOT\_SPAM & Kaspersky verdict code: message classified as legitimate \\
+audit\_metrics & Sub-document in the journey schema storing line-count statistics for Kibana charts \\
+\end{longtable}
+
+\end{document}

@@ -1,0 +1,108 @@
+{
+  "cg-mail-logs-pipeline" : {
+    "processors" : [
+      {
+        "grok" : {
+          "field" : "file",
+          "patterns" : [
+            ".*/%{WORD:source_server}/%{YEAR:log_year}-%{MONTHNUM:log_month}-%{MONTHDAY:log_day}.*"
+          ]
+        }
+      },
+      {
+        "script" : {
+          "source" : "ctx.log_date = ctx.log_year + \"-\" + ctx.log_month + \"-\" + ctx.log_day"
+        }
+      },
+      {
+        "grok" : {
+          "field" : "message",
+          "patterns" : [
+            "%{TIME:time}.*QUEUE\\(\\[%{NUMBER:qid}\\]\\)\\s+from\\s+<%{DATA:sender}>.*",
+            "%{TIME:time}.*QUEUE\\(\\[%{NUMBER:qid}\\]\\).*",
+            "%{TIME:time}.*SMTP-.*\\[%{NUMBER:qid}\\].*",
+            "%{TIME:time}.*DEQUEUER\\s+\\[%{NUMBER:qid}\\].*"
+          ],
+          "ignore_failure" : true
+        }
+      },
+      {
+        "set" : {
+          "if" : "ctx.message.contains(\"QUEUE(\")",
+          "field" : "log_type",
+          "value" : "QUEUE"
+        }
+      },
+      {
+        "set" : {
+          "if" : "ctx.message.contains(\"SMTP-\")",
+          "field" : "log_type",
+          "value" : "SMTP"
+        }
+      },
+      {
+        "set" : {
+          "if" : "ctx.message.contains(\"DEQUEUER\")",
+          "field" : "log_type",
+          "value" : "DEQUEUER"
+        }
+      },
+      {
+        "grok" : {
+          "if" : "ctx.log_type == \"SMTP\"",
+          "field" : "message",
+          "patterns" : [
+            ".*got:250\\s+%{NUMBER:delivery_id}\\s+.*"
+          ],
+          "ignore_failure" : true
+        }
+      },
+      {
+        "grok" : {
+          "if" : "ctx.log_type == \"DEQUEUER\"",
+          "field" : "message",
+          "patterns" : [
+            ".*\\)%{DATA:recipient}\\s+relayed.*"
+          ],
+          "ignore_failure" : true
+        }
+      },
+      {
+        "script" : {
+          "if" : "ctx.log_type == \"DEQUEUER\" || (ctx.log_type != null && !ctx.source_server.contains(\"FES\"))",
+          "source" : "ctx.delivery_id = ctx.qid"
+        }
+      },
+      {
+        "script" : {
+          "if" : "ctx.time != null",
+          "source" : "ctx.timestamp_str = ctx.log_date + \" \" + ctx.time"
+        }
+      },
+      {
+        "date" : {
+          "if" : "ctx.timestamp_str != null",
+          "field" : "timestamp_str",
+          "formats" : [
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss"
+          ],
+          "target_field" : "timestamp",
+          "timezone" : "Africa/Tunis",
+          "ignore_failure" : true
+        }
+      },
+      {
+        "remove" : {
+          "field" : [
+            "log_year",
+            "log_month",
+            "log_day",
+            "timestamp_str"
+          ],
+          "ignore_missing" : true
+        }
+      }
+    ]
+  }
+}
