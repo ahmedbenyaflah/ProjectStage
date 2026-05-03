@@ -30,7 +30,7 @@ export default function Login() {
         setError(data.error || 'Login failed');
         return;
       }
-      doLogin(data.token, data.email);
+      doLogin(data.token, data.email, data.role);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Cannot reach server');

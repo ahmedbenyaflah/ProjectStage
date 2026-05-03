@@ -3,6 +3,10 @@ Received-mail (MX) journey parser → Elasticsearch `mail-journeys-received-YYYY
 
 Uses the same canonical audit shape as sent mail: `audit.fes_lines` (edge/MX trail) and
 `audit.mapped_lines` (unused here). Documents are finalized with `journey_schema.finalize_journey_document`.
+
+For each ``target_date`` (D), reads D-1 and D logs only (no D+1). Journeys starting on D go to
+``mail-journeys-received-D``; journeys that started on D-1 and ended on D go to
+``mail-journeys-received-(D-1)``.
 """
 from __future__ import annotations
 
@@ -19,6 +23,13 @@ from elasticsearch import helpers
 import config
 from es_infra import ensure_mail_journey_template, get_elasticsearch
 from journey_schema import finalize_journey_document
+from log_calendar import (
+    add_calendar_days,
+    bump_journey_ts_window,
+    calendar_date_from_log_basename,
+    commit_journey_ts_bounds,
+    resolve_journey_index_date,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -40,25 +51,15 @@ def get_timestamp(line: str, date_str: str) -> str | None:
     return f"{date_str} {match.group(1)}" if match else None
 
 
-def parse_ts(ts_str: str | None) -> datetime | None:
-    if not ts_str:
-        return None
-    try:
-        return datetime.strptime(ts_str, TS_FMT)
-    except (ValueError, TypeError):
-        return None
-
-
 def process_line(
     line: str,
     qid: str,
     journeys: dict,
-    target_date: str,
+    line_calendar_date: str,
     server_name: str,
     details_id: str | None = None,
 ) -> None:
     if qid not in journeys:
-        st = get_timestamp(line, target_date)
         journeys[qid] = {
             "qid": qid,
             "detailsid": None,
@@ -68,10 +69,10 @@ def process_line(
             "serverPath": [server_name],
             "relayIp": None,
             "status": "Success",
-            "date": target_date,
-            "start_time": st,
-            "end_time": st,
-            "@timestamp": parse_ts(st) if st else None,
+            "date": line_calendar_date,
+            "start_time": None,
+            "end_time": None,
+            "@timestamp": None,
             "duration_seconds": 0.0,
             "kaspersky_spam_status": "KAS_STATUS_NOT_SPAM",
             "kaspersky_virus_status": "CLEAN",
@@ -88,9 +89,8 @@ def process_line(
 
     j = journeys[qid]
     line_lower = line.lower()
-    ts = get_timestamp(line, target_date)
-    if ts:
-        j["end_time"] = ts
+    ts = get_timestamp(line, line_calendar_date)
+    bump_journey_ts_window(j, ts)
     if any(kw in line_lower for kw in _RX_AUDIT_KEYWORDS):
         j["audit"]["fes_lines"].append(f"[{server_name}] {line.strip()}")
 
@@ -186,14 +186,19 @@ def process_reception_logs(target_date: str) -> None:
     ensure_mail_journey_template(es)
 
     log.info("RECEIVED parser | date=%s | log_root=%s", target_date, base_path)
+    prev_date = add_calendar_days(target_date, -1)
 
     for folder in mx_folders:
         if not os.path.exists(folder):
             continue
         server_name = os.path.basename(folder)
-        files = sorted(glob.glob(os.path.join(folder, f"{target_date}*.log")))
+        files = sorted(
+            glob.glob(os.path.join(folder, f"{prev_date}*.log"))
+            + glob.glob(os.path.join(folder, f"{target_date}*.log"))
+        )
 
         for f_path in files:
+            file_date = calendar_date_from_log_basename(os.path.basename(f_path)) or target_date
             with open(f_path, "r", errors="ignore") as f:
                 for line in f:
                     if "SNMP" in line:
@@ -205,11 +210,11 @@ def process_reception_logs(target_date: str) -> None:
                             det_id, mail_id = link.group(1), link.group(2)
                             kaspersky_id_map[det_id] = mail_id
 
-                            process_line(line.strip(), mail_id, journeys, target_date, server_name, det_id)
+                            process_line(line.strip(), mail_id, journeys, file_date, server_name, det_id)
 
                             if det_id in pending_kaspersky_lines:
                                 for buffered_line in pending_kaspersky_lines[det_id]:
-                                    process_line(buffered_line, mail_id, journeys, target_date, server_name, det_id)
+                                    process_line(buffered_line, mail_id, journeys, file_date, server_name, det_id)
                                 del pending_kaspersky_lines[det_id]
 
                     qid_match = re.search(r"\[(\d+)\]", line)
@@ -228,17 +233,27 @@ def process_reception_logs(target_date: str) -> None:
                                 continue
 
                     if qid:
-                        process_line(line.strip(), qid, journeys, target_date, server_name, current_det_id)
+                        process_line(line.strip(), qid, journeys, file_date, server_name, current_det_id)
 
     actions: list[dict] = []
+    carry_count = 0
     for qid, j in journeys.items():
+        commit_journey_ts_bounds(j)
+        index_date = resolve_journey_index_date(
+            target_date, j.get("start_time"), j.get("end_time")
+        )
+        if not index_date:
+            continue
+
         if j["start_time"] and j["end_time"]:
             try:
                 t_start = datetime.strptime(j["start_time"], TS_FMT)
                 t_end = datetime.strptime(j["end_time"], TS_FMT)
-                j["duration_seconds"] = round(abs((t_end - t_start).total_seconds()), 3)
+                j["duration_seconds"] = round((t_end - t_start).total_seconds(), 3)
             except Exception:
                 j["duration_seconds"] = 0.0
+
+        j["date"] = index_date
 
         if len(j["audit"]["fes_lines"]) <= 1 and not j["sender"]:
             continue
@@ -250,15 +265,18 @@ def process_reception_logs(target_date: str) -> None:
         )
         doc_id = f"{j['serverPath'][0]}-{qid}"
         actions.append(
-            {"_index": f"mail-journeys-received-{target_date}", "_id": doc_id, "_source": finalized}
+            {"_index": f"mail-journeys-received-{index_date}", "_id": doc_id, "_source": finalized}
         )
+        if index_date != target_date:
+            carry_count += 1
 
     if actions:
         helpers.bulk(es, actions, chunk_size=200, refresh=True)
         log.info(
-            "RECEIVED %s | indexed=%d | %.2fs",
+            "RECEIVED %s | indexed=%d (carry_prev_day=%d) | %.2fs",
             target_date,
             len(actions),
+            carry_count,
             time.time() - start_bench,
         )
     else:

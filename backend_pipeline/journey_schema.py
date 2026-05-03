@@ -16,7 +16,7 @@ MAIL_JOURNEY_TEMPLATE_NAME = "cg-mail-journeys-v1"
 MAIL_JOURNEY_TEMPLATE_PRIORITY = 500
 
 # Bump when document contract changes; helps future migrations.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _DATE_FORMATS = "strict_date_optional_time||yyyy-MM-dd HH:mm:ss.SSS||yyyy-MM-dd HH:mm:ss||epoch_millis"
 
@@ -56,6 +56,8 @@ def mail_journey_index_template_body() -> dict[str, Any]:
                     "end_time": {"type": "date", "format": _DATE_FORMATS},
                     "@timestamp": {"type": "date", "format": _DATE_FORMATS},
                     "duration_seconds": {"type": "float"},
+                    "spans_calendar_days": {"type": "boolean"},
+                    "journey_end_calendar_date": {"type": "keyword", "ignore_above": 16},
                     "kaspersky_spam_status": {"type": "keyword", "ignore_above": 64},
                     "kaspersky_virus_status": {"type": "keyword", "ignore_above": 128},
                     "kaspersky_level": {"type": "short"},

@@ -37,7 +37,7 @@ export default function Signup() {
         setError(data.error || 'Signup failed');
         return;
       }
-      doLogin(data.token, data.email);
+      doLogin(data.token, data.email, data.role);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Cannot reach server');

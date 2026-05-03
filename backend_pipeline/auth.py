@@ -5,12 +5,8 @@ Passwords are hashed with bcrypt. Returns JWT access token.
 import logging
 import os
 
-try:
-    from dotenv import load_dotenv
+import config  # noqa: F401 — load `.env` before JWT / DB usage
 
-    load_dotenv()
-except ImportError:
-    pass
 from datetime import datetime, timedelta
 
 import bcrypt
@@ -98,7 +94,7 @@ def signup(email: str, password: str) -> tuple[bool, str]:
                 return False, "Email already registered"
             ph = hash_password(password)
             cur.execute(
-                "INSERT INTO users (email, password_hash) VALUES (%s, %s)",
+                "INSERT INTO users (email, password_hash, role) VALUES (%s, %s, 'N1')",
                 (email, ph),
             )
             conn.commit()
@@ -123,18 +119,31 @@ def login(email: str, password: str) -> tuple[bool, str | None]:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, password_hash FROM users WHERE email = %s", (email,))
+            cur.execute(
+                "SELECT id, password_hash, role FROM users WHERE email = %s",
+                (email,),
+            )
             row = cur.fetchone()
         if not row:
             log.info("[EXIT] login output=(False, 'Invalid email or password')")
             return False, "Invalid email or password"
-        uid, ph = row
+        uid, ph, role = row
         if not verify_password(password, ph):
             log.info("[EXIT] login output=(False, 'Invalid email or password')")
             return False, "Invalid email or password"
-        token = create_access_token({"sub": str(uid), "email": email})
+        token = create_access_token({"sub": str(uid), "email": email, "role": role or "N1"})
         log.info("[EXIT] login output=(True, token_len=%d)", len(token) if token else 0)
         return True, token
     finally:
         conn.close()
+
+
+def admin_login(username: str, password: str) -> tuple[bool, str | None]:
+    """Static dashboard admin. Returns (success, token_or_error_message)."""
+    if not username or not password:
+        return False, "Username and password required"
+    if username.strip() != config.ADMIN_USERNAME or password != config.ADMIN_PASSWORD:
+        return False, "Invalid credentials"
+    token = create_access_token({"is_admin": True, "sub": "admin"})
+    return True, token
 

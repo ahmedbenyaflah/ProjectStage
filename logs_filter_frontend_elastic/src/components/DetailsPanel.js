@@ -107,6 +107,12 @@ export default function DetailsPanel({ log }) {
         </div>
 
         <div className="text-sm"><strong>Date:</strong> {log.date || '—'}</div>
+        {log.spansCalendarDays && (
+          <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-1">
+            Journey spans two calendar days (search day is the first day of activity; log lines continue after
+            midnight{log.journeyEndCalendarDate ? ` into ${log.journeyEndCalendarDate}` : ''}).
+          </div>
+        )}
         <div className="text-sm">
           <strong>Queue ID:</strong>{' '}
           <span className="font-mono ml-1">{queueId}</span>
@@ -189,8 +195,11 @@ export default function DetailsPanel({ log }) {
 
       {/* TIMING */}
       <div className="space-y-2 py-3 border-t border-b border-gray-50 mb-3">
-        <div className="text-sm">
-          <strong>Time:</strong> {log.startTime || '—'} – {log.endTime || '—'}
+        <div className="text-xs font-mono">
+          <strong className="font-sans text-sm">Time:</strong>{' '}
+          {(log.rawDocument && log.rawDocument.start_time) || log.startTime || '—'}
+          {' – '}
+          {(log.rawDocument && log.rawDocument.end_time) || log.endTime || '—'}
         </div>
         {log.durationSeconds > 0 && (
           <div className="text-sm text-orange-700">

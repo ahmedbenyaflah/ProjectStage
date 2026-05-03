@@ -3,6 +3,10 @@ Sent-mail journey parser: FES + mapped server logs → Elasticsearch `mail-journ
 
 Run after Elasticsearch is up and the index template is installed (automatic on API startup,
 or call `es_infra.ensure_mail_journey_template` once).
+
+For each ``target_date`` (D), reads D-1 and D log files only (no D+1). Journeys starting on D go to
+``mail-journeys-sent-D``; journeys that started on D-1 and ended on D are written to
+``mail-journeys-sent-(D-1)`` so the day-D job can complete overnight mail after day D-1's run.
 """
 from __future__ import annotations
 
@@ -19,6 +23,13 @@ from elasticsearch import helpers
 import config
 from es_infra import ensure_mail_journey_template, get_elasticsearch
 from journey_schema import finalize_journey_document
+from log_calendar import (
+    add_calendar_days,
+    bump_journey_ts_window,
+    calendar_date_from_log_basename,
+    commit_journey_ts_bounds,
+    resolve_journey_index_date,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -80,11 +91,16 @@ def process_logs(target_date: str) -> None:
     ensure_mail_journey_template(es)
 
     log.info("SENT parser | date=%s | log_root=%s", target_date, base_path)
+    prev_date = add_calendar_days(target_date, -1)
 
     for folder in fes_folders:
         server_name = os.path.basename(folder)
-        files = sorted(glob.glob(os.path.join(folder, f"{target_date}*.log")))
+        files = sorted(
+            glob.glob(os.path.join(folder, f"{prev_date}*.log"))
+            + glob.glob(os.path.join(folder, f"{target_date}*.log"))
+        )
         for f_path in files:
+            file_date = calendar_date_from_log_basename(os.path.basename(f_path)) or target_date
             with open(f_path, "r", errors="ignore") as f:
                 for line in f:
                     line_lower = line.lower()
@@ -96,7 +112,7 @@ def process_logs(target_date: str) -> None:
                     if not qid_match:
                         continue
                     qid = qid_match.group(1)
-                    ts = get_timestamp(line, target_date)
+                    ts = get_timestamp(line, file_date)
 
                     if qid not in journeys:
                         journeys[qid] = {
@@ -110,9 +126,9 @@ def process_logs(target_date: str) -> None:
                             "relayIp": None,
                             "status": "Pending",
                             "date": target_date,
-                            "start_time": ts,
-                            "end_time": ts,
-                            "@timestamp": parse_ts(ts) if ts else None,
+                            "start_time": None,
+                            "end_time": None,
+                            "@timestamp": None,
                             "duration_seconds": 0.0,
                             "kaspersky_spam_status": "KAS_STATUS_NOT_SPAM",
                             "kaspersky_virus_status": "CLEAN",
@@ -127,8 +143,7 @@ def process_logs(target_date: str) -> None:
                     if _MX_SMTPI_RE.search(line):
                         j["_mx_originated"] = True
 
-                    if ts:
-                        j["end_time"] = ts
+                    bump_journey_ts_window(j, ts)
 
                     fes_keywords = [
                         "queue",
@@ -201,8 +216,12 @@ def process_logs(target_date: str) -> None:
 
     mapped_dirs = ["VIP01", "VIP02", "GP01", "GP02", "ML01", "ML02"]
     for m_dir in mapped_dirs:
-        m_files = sorted(glob.glob(os.path.join(base_path, m_dir, f"{target_date}*.log")))
+        m_files = sorted(
+            glob.glob(os.path.join(base_path, m_dir, f"{prev_date}*.log"))
+            + glob.glob(os.path.join(base_path, m_dir, f"{target_date}*.log"))
+        )
         for f_path in m_files:
+            file_date = calendar_date_from_log_basename(os.path.basename(f_path)) or target_date
             with open(f_path, "r", errors="ignore") as f:
                 for line in f:
                     line_lower = line.lower()
@@ -232,9 +251,8 @@ def process_logs(target_date: str) -> None:
                         if _mapped_outcome_line(line_lower) and m_dir not in j["serverPath"]:
                             j["serverPath"].append(m_dir)
 
-                        ts = get_timestamp(line, target_date)
-                        if ts:
-                            j["end_time"] = ts
+                        ts = get_timestamp(line, file_date)
+                        bump_journey_ts_window(j, ts)
 
                         if "extfilter(kaspersky)" in line_lower:
                             spam_m = re.search(r"X-KAS-Status: (KAS_STATUS_\w+)", line)
@@ -261,13 +279,23 @@ def process_logs(target_date: str) -> None:
 
     actions: list[dict] = []
     mx_filtered = 0
+    carry_count = 0
     for qid, j in journeys.items():
+        commit_journey_ts_bounds(j)
+        index_date = resolve_journey_index_date(
+            target_date, j.get("start_time"), j.get("end_time")
+        )
+        if not index_date:
+            continue
+
         if not j["audit"]["fes_lines"]:
             continue
 
         if j.pop("_mx_originated", False):
             mx_filtered += 1
             continue
+
+        j["date"] = index_date
 
         if j["status"] in ["Pending", "Success"]:
             num_total = len(j["recipients"])
@@ -284,7 +312,7 @@ def process_logs(target_date: str) -> None:
         t_start = parse_ts(j["start_time"])
         t_end = parse_ts(j["end_time"])
         j["duration_seconds"] = (
-            round(abs((t_end - t_start).total_seconds()), 3) if t_start and t_end else 0.0
+            round((t_end - t_start).total_seconds(), 3) if t_start and t_end else 0.0
         )
 
         finalized = finalize_journey_document(
@@ -293,17 +321,20 @@ def process_logs(target_date: str) -> None:
             max_downstream_lines=config.MAX_AUDIT_DOWNSTREAM_LINES,
         )
         actions.append(
-            {"_index": f"mail-journeys-sent-{target_date}", "_id": qid, "_source": finalized}
+            {"_index": f"mail-journeys-sent-{index_date}", "_id": qid, "_source": finalized}
         )
+        if index_date != target_date:
+            carry_count += 1
 
     if actions:
         helpers.bulk(es, actions, chunk_size=200, refresh=True)
         for act in actions:
             stats[act["_source"]["status"]] += 1
         log.info(
-            "SENT %s | indexed=%d mx_filtered=%d | Success=%s Partial=%s Failed=%s Pending=%s Discarded=%s | %.2fs",
+            "SENT %s | indexed=%d (carry_prev_day=%d) mx_filtered=%d | Success=%s Partial=%s Failed=%s Pending=%s Discarded=%s | %.2fs",
             target_date,
             len(actions),
+            carry_count,
             mx_filtered,
             stats["Success"],
             stats["Partial Success"],

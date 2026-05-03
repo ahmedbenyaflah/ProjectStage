@@ -60,21 +60,28 @@ export default function SearchForm({ onSearch, onClear }) {
       setError('Please select start time');
       return;
     }
-    if (!endTime.trim()) {
-      setError('Please select end time');
-      return;
-    }
     const startMin = parseTimeToMinutes(startTime);
-    const endMin = parseTimeToMinutes(endTime);
-    if (startMin == null || endMin == null) {
-      setError('Invalid time');
+    if (startMin == null) {
+      setError('Invalid start time');
       return;
     }
-    if (startMin > endMin) {
-      setError('Start time must be before end time');
+    const endOmitted = !endTime.trim();
+    const endNorm = toHHMMSS(endTime);
+    const endIsMidnightStart = !endOmitted && endNorm === '00:00:00';
+    let endMin = endOmitted || endIsMidnightStart ? 24 * 60 - 1 : parseTimeToMinutes(endTime);
+    if (!endOmitted && !endIsMidnightStart && endMin == null) {
+      setError('Invalid end time');
       return;
     }
-    const diffMin = endMin - startMin;
+    // If end clock is earlier than start (e.g. 23:50 → 02:00), treat end as next calendar day.
+    const overnight =
+      !endOmitted && !endIsMidnightStart && endMin != null && endMin < startMin;
+    const endMinForSpan = overnight ? endMin + 24 * 60 : endMin;
+    if (!overnight && startMin > endMinForSpan) {
+      setError('Start time must be before end time (or use an earlier end clock to cross midnight)');
+      return;
+    }
+    const diffMin = endMinForSpan - startMin;
     if (diffMin > MAX_TIME_RANGE_MINUTES) {
       setError(`Time range cannot exceed ${MAX_TIME_RANGE_HOURS} hours. Yours is ${Math.floor(diffMin / 60)}h ${diffMin % 60}m.`);
       return;
@@ -88,7 +95,7 @@ export default function SearchForm({ onSearch, onClear }) {
       maxDuration: maxDuration.trim(),
       date: date.trim(),
       startTime: toHHMMSS(startTime),
-      endTime: toHHMMSS(endTime),
+      endTime: endOmitted ? '' : toHHMMSS(endTime),
       direction,
     });
   };
@@ -211,11 +218,11 @@ export default function SearchForm({ onSearch, onClear }) {
           wrapperClassName="flex-1 min-w-0"
         />
         <ClockTimePicker
-          label={`End time (≤${MAX_TIME_RANGE_HOURS}h)`}
+          label={`End time (optional, ≤${MAX_TIME_RANGE_HOURS}h; empty or 00:00 → end of day; if end < start, end is next day)`}
           value={endTime}
           onChange={setEndTime}
           id="end-time"
-          required
+          required={false}
           triggerClassName="h-[2.5rem] min-h-[2.5rem] flex-1 min-w-0 w-full"
           wrapperClassName="flex-1 min-w-0"
         />

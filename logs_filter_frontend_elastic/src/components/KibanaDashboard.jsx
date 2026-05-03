@@ -2,10 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { encode as risonEncode } from 'rison-node';
 import BrandMark from './BrandMark';
+import { KIBANA_DASHBOARD_N3_BASE_URL } from '../config';
 import 'react-datepicker/dist/react-datepicker.css';
-
-const KIBANA_DASHBOARD_BASE_URL =
-  "http://localhost:5601/app/dashboards#/view/4d52dc89-2cc6-4b59-946a-c29f8247bb6b?embed=true&_g=(refreshInterval%3A(pause%3A!f%2Cvalue%3A60000)%2Ctime%3A(from%3A'2026-01-26T20%3A50%3A27.657Z'%2Cto%3A'2026-01-28T04%3A55%3A40.611Z'))";
 
 function toIso(date) {
   if (!date) return null;
@@ -28,12 +26,20 @@ function buildIframeSrc({ baseUrl, time, refreshInterval }) {
   return `${beforeQuery}?${params.toString()}`;
 }
 
-export default function KibanaDashboard() {
+function KibanaEmbedStatic({ src }) {
+  return (
+    <div className="w-full h-full min-h-0 flex flex-col bg-white overflow-hidden">
+      <iframe title="Kibana dashboard" src={src} className="w-full flex-1 min-h-0 border-0" />
+    </div>
+  );
+}
+
+function KibanaDashboardWithToolbar() {
   const [timeMode, setTimeMode] = useState('last30d'); // last7d | last30d | last90d | custom
   const [customRange, setCustomRange] = useState([null, null]);
   const [customFrom, customTo] = customRange;
   const [liveMode, setLiveMode] = useState(false);
-  const [iframeSrc, setIframeSrc] = useState(KIBANA_DASHBOARD_BASE_URL);
+  const [iframeSrc, setIframeSrc] = useState(KIBANA_DASHBOARD_N3_BASE_URL);
 
   const quickRanges = useMemo(
     () => [
@@ -63,7 +69,7 @@ export default function KibanaDashboard() {
 
   useEffect(() => {
     const next = buildIframeSrc({
-      baseUrl: KIBANA_DASHBOARD_BASE_URL,
+      baseUrl: KIBANA_DASHBOARD_N3_BASE_URL,
       time,
       refreshInterval,
     });
@@ -153,3 +159,12 @@ export default function KibanaDashboard() {
   );
 }
 
+/**
+ * N1/N2: pass `embedOnlySrc` for a static full-viewport embed. N3: omit for toolbar + N3 dashboard URL.
+ */
+export default function KibanaDashboard({ embedOnlySrc = null }) {
+  if (embedOnlySrc) {
+    return <KibanaEmbedStatic src={embedOnlySrc} />;
+  }
+  return <KibanaDashboardWithToolbar />;
+}

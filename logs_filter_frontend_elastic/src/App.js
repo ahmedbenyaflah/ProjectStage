@@ -6,12 +6,14 @@ import Login from './components/Login';
 import Signup from './components/Signup';
 import SearchPage from './components/SearchPage';
 import DashboardPage from './components/DashboardPage';
+import AdminDashboard from './components/AdminDashboard';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route

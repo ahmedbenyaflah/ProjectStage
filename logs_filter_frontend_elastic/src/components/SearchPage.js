@@ -128,6 +128,8 @@ function mapItem(item, idx, currentPage, dateNorm) {
     server: item.relayIp || '',
     startTime: journeyTimeOfDay(item.start_time),
     endTime: journeyTimeOfDay(item.end_time),
+    spansCalendarDays: Boolean(item.spans_calendar_days),
+    journeyEndCalendarDate: item.journey_end_calendar_date || '',
     auditMetrics: item.audit_metrics || null,
 
     // Kaspersky

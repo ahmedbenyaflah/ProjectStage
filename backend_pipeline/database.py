@@ -8,12 +8,7 @@ import logging
 import os
 import threading
 
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv()
-except ImportError:
-    pass
+import config  # noqa: F401 — load `.env` before DATABASE_URL
 
 log = logging.getLogger(__name__)
 
@@ -109,12 +104,45 @@ def init_db():
                     id SERIAL PRIMARY KEY,
                     email VARCHAR(255) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
+                    role VARCHAR(8) NOT NULL DEFAULT 'N1',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
                 """
             )
+            cur.execute(
+                """
+                DO $mig$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+                    ) THEN
+                        ALTER TABLE users ADD COLUMN role VARCHAR(8) NOT NULL DEFAULT 'N1';
+                    END IF;
+                END
+                $mig$;
+                """
+            )
+            cur.execute(
+                """
+                ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+                ALTER TABLE users ADD CONSTRAINT users_role_check
+                    CHECK (role IN ('N1', 'N2', 'N3'));
+                """
+            )
             conn.commit()
         log.info("[EXIT] init_db output=ok (users table ready)")
+    finally:
+        conn.close()
+
+
+def get_n3_subscriber_emails() -> list[str]:
+    """Emails of users with role N3 (DNSBL notification subscribers)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email FROM users WHERE role = 'N3'")
+            return [str(r[0]) for r in cur.fetchall() if r and r[0]]
     finally:
         conn.close()
 
