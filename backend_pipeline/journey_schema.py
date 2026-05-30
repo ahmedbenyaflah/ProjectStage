@@ -115,26 +115,13 @@ def _format_es_local_ts(dt: datetime) -> str:
 
 
 def coerce_kaspersky_level_to_int(doc: dict[str, Any]) -> int:
-    """
-    Single integer: count of 'X' marks in KAS level (legacy string or kas_level_score).
-    """
     klv = doc.get("kaspersky_level")
     if isinstance(klv, bool):
-        klv = None
-    if isinstance(klv, int):
-        return max(0, min(32767, klv))
-    if isinstance(klv, float) and not isinstance(klv, bool):
+        return 0
+    if isinstance(klv, (int, float)):
         return max(0, min(32767, int(klv)))
-    ks = doc.get("kas_level_score")
-    if isinstance(ks, bool):
-        ks = None
-    if isinstance(ks, (int, float)):
-        return max(0, min(32767, int(ks)))
     if isinstance(klv, str) and klv.strip():
         return klv.count("X")
-    kas = doc.get("kas_level")
-    if isinstance(kas, str) and kas.strip():
-        return kas.count("X")
     return 0
 
 
@@ -164,8 +151,6 @@ def finalize_journey_document(
     )
 
     out["kaspersky_level"] = coerce_kaspersky_level_to_int(out)
-    out.pop("kas_level", None)
-    out.pop("kas_level_score", None)
 
     if out.get("kaspersky_spam_status") == "UNKNOWN":
         out["kaspersky_spam_status"] = "KAS_STATUS_NOT_SPAM"

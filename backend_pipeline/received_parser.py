@@ -36,14 +36,10 @@ log = logging.getLogger(__name__)
 
 TS_FMT = "%Y-%m-%d %H:%M:%S.%f"
 
-_RX_AUDIT_KEYWORDS = [
-    "queue", "dequeuer", "header", "envelope",
-    "extfilter", "kaspersky",
-    "failed", "rejected", "rejecting",
-    "discarded", "relayed", "delivered",
-    "mailbox", "account", "smtpi",
-    "got:250",
-]
+def _save_fes_line(j: dict, server: str, line: str) -> None:
+    entry = f"[{server}] {line.strip()}"
+    if entry not in j["audit"]["fes_lines"]:
+        j["audit"]["fes_lines"].append(entry)
 
 
 def get_timestamp(line: str, date_str: str) -> str | None:
@@ -91,47 +87,52 @@ def process_line(
     line_lower = line.lower()
     ts = get_timestamp(line, line_calendar_date)
     bump_journey_ts_window(j, ts)
-    if any(kw in line_lower for kw in _RX_AUDIT_KEYWORDS):
-        j["audit"]["fes_lines"].append(f"[{server_name}] {line.strip()}")
 
     if details_id:
         j["detailsid"] = details_id
 
+    # --- Sender ---
     if "header: From:" in line:
         m = re.search(r'From:\s+(?:.*<)?([^>\s\x1b"]+)(?:>)?', line)
         if m:
             j["sender"] = m.group(1).lower().strip()
+            _save_fes_line(j, server_name, line)
 
+    # --- Recipients (To / CC headers) ---
     if "header: To:" in line or "header: CC:" in line:
         emails = re.findall(r"[\w\.-]+@[\w\.-]+\.\w+", line)
+        added = False
         for e in emails:
             e_clean = e.lower().strip()
             if e_clean not in j["recipients"]:
                 j["recipients"].append(e_clean)
+                added = True
+        if added or emails:
+            _save_fes_line(j, server_name, line)
 
+    # --- Recipient (envelope) ---
     if "envelope: R" in line:
         m = re.search(r"<\s*([^>\s]+)\s*>", line)
         if m:
             e_clean = m.group(1).lower().strip()
             if e_clean not in j["recipients"]:
                 j["recipients"].append(e_clean)
+            _save_fes_line(j, server_name, line)
 
+    # --- Recipient + success indicator (DEQUEUER relayed) ---
     if "DEQUEUER" in line and "relayed" in line:
         m = re.search(r"SMTP\(.*?\)\s*([\w\.-]+@[\w\.-]+\.\w+)", line)
         if m:
             e_clean = m.group(1).lower().strip()
             if e_clean not in j["recipients"]:
                 j["recipients"].append(e_clean)
+        _save_fes_line(j, server_name, line)
 
-    if "failed:" in line_lower and ("says:" in line_lower or "rejecting" in line_lower):
-        code_match = re.search(r"says:\\n\s*(\d{3})", line)
-        if code_match:
-            j["error_details"]["code"] = code_match.group(1)
-        msg_match = re.search(r"says:\\n\s*\d{3}\s+(.*?)(?:,\s*rejecting|$)", line)
-        if msg_match:
-            j["error_details"]["message"] = msg_match.group(1).strip()
-        j["error_details"]["full_error_line"] = line.strip()
+    # --- Kaspersky scan link (out line: kas ID → mail ID) ---
+    if "extfilter(kaspersky) out" in line_lower:
+        _save_fes_line(j, server_name, line)
 
+    # --- Kaspersky results (inp line: spam/virus status, level, method) ---
     if "EXTFILTER(kaspersky) inp" in line or "EXTFILTER(Kaspersky) inp" in line:
         id_match = re.search(r"inp\(\d+\):\s+(\d+)", line)
         if id_match:
@@ -153,9 +154,23 @@ def process_line(
         if "X-KAV-Status: DETECT" in line:
             v_ext = re.search(r'X-KAV-Extended:\s+([^"\\\x1b]+)', line)
             j["kaspersky_virus_status"] = v_ext.group(1).strip() if v_ext else "DETECTED"
+        _save_fes_line(j, server_name, line)
 
+    # --- Error details ---
+    if "failed:" in line_lower and ("says:" in line_lower or "rejecting" in line_lower):
+        code_match = re.search(r"says:\\n\s*(\d{3})", line)
+        if code_match:
+            j["error_details"]["code"] = code_match.group(1)
+        msg_match = re.search(r"says:\\n\s*\d{3}\s+(.*?)(?:,\s*rejecting|$)", line)
+        if msg_match:
+            j["error_details"]["message"] = msg_match.group(1).strip()
+        j["error_details"]["full_error_line"] = line.strip()
+        _save_fes_line(j, server_name, line)
+
+    # --- Status: Discarded / Failed ---
     if "discarded" in line_lower or "discarded by rules" in line_lower:
         j["status"] = "Discarded"
+        _save_fes_line(j, server_name, line)
     elif "failed" in line_lower or "rejecting" in line_lower or "rejection" in line_lower:
         j["status"] = "Failed"
         if not j["error_details"]["code"]:
@@ -171,6 +186,7 @@ def process_line(
                     j["error_details"]["message"] = msg
             if not j["error_details"]["full_error_line"]:
                 j["error_details"]["full_error_line"] = line.strip()
+        _save_fes_line(j, server_name, line)
 
 
 def process_reception_logs(target_date: str) -> None:

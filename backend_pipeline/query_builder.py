@@ -206,11 +206,12 @@ def build_journey_query_clauses(
 
                 filter_clauses.append(
                     {
-                        "bool": {
-                            "must": [
-                                {"range": {"start_time": {"lte": window_end, "format": _ES_TS_FORMATS}}},
-                                {"range": {"end_time": {"gte": window_start, "format": _ES_TS_FORMATS}}},
-                            ]
+                        "range": {
+                            "start_time": {
+                                "gte": window_start,
+                                "lte": window_end,
+                                "format": _ES_TS_FORMATS,
+                            }
                         }
                     }
                 )

@@ -4,8 +4,11 @@ Used by the API, parsers, and Elasticsearch bootstrap code.
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 # This package lives at <repo>/backend_pipeline/ — load .env from predictable paths
 # (not cwd) so `python sent_parser.py`, uvicorn, and IDE runs behave the same.
@@ -41,6 +44,17 @@ LOG_BASE_PATH: Path = _path_from_env("LOG_BASE_PATH", _DEFAULT_LOG_ROOT)
 # Audit storage caps (full counts still in audit_metrics.*_line_count)
 MAX_AUDIT_EDGE_LINES: int = int(os.environ.get("MAX_AUDIT_EDGE_LINES", "25"))
 MAX_AUDIT_DOWNSTREAM_LINES: int = int(os.environ.get("MAX_AUDIT_DOWNSTREAM_LINES", "25"))
+
+# Mapped server relay — IPs must match this prefix AND a known last octet to be treated as internal next-hops.
+# This variable is required. If missing, relay detection is disabled and all downstream mail will be misclassified.
+_mapped_prefix_raw = os.environ.get("MAPPED_SERVER_IP_PREFIX", "").strip()
+if not _mapped_prefix_raw:
+    _log.error(
+        "MAPPED_SERVER_IP_PREFIX is not set in .env — "
+        "mapped server relay detection is DISABLED. "
+        "Add MAPPED_SERVER_IP_PREFIX=10.46.96. to your .env file."
+    )
+MAPPED_SERVER_IP_PREFIX: str = _mapped_prefix_raw
 
 # API
 PORT: int = int(os.environ.get("PORT", "8000"))

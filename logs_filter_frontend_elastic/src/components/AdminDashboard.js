@@ -347,6 +347,7 @@ export default function AdminDashboard() {
                     value={addPassword}
                     onChange={(e) => setAddPassword(e.target.value)}
                     className="mt-1 w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white"
+                    autoComplete="new-password"
                   />
                 </label>
                 <label className="block">
@@ -405,6 +406,7 @@ export default function AdminDashboard() {
                     onChange={(e) => setEditPassword(e.target.value)}
                     className="mt-1 w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-600 text-white"
                     placeholder="••••••••"
+                    autoComplete="new-password"
                   />
                 </label>
                 <label className="block">

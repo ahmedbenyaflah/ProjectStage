@@ -41,14 +41,9 @@ function normalizeDate(dateStr) {
   return s;
 }
 
-/** KAS threat level as integer (count of X); supports legacy string or kas_level_score. */
 function normalizeKasperskyLevelXCount(item) {
   const k = item.kaspersky_level;
-  if (typeof k === 'number' && !Number.isNaN(k)) return Math.max(0, Math.floor(k));
-  if (typeof k === 'string' && k.trim()) return (k.match(/X/g) || []).length;
-  const ks = item.kas_level_score;
-  if (typeof ks === 'number' && !Number.isNaN(ks)) return Math.max(0, Math.floor(ks));
-  return 0;
+  return typeof k === 'number' && !Number.isNaN(k) ? Math.max(0, Math.floor(k)) : 0;
 }
 
 /**

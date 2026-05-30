@@ -231,8 +231,6 @@ def _normalize_hit_source(source: dict) -> dict:
     out["audit"] = audit
 
     out["kaspersky_level"] = coerce_kaspersky_level_to_int(out)
-    out.pop("kas_level", None)
-    out.pop("kas_level_score", None)
 
     if out.get("kaspersky_spam_status") == "UNKNOWN":
         out["kaspersky_spam_status"] = "KAS_STATUS_NOT_SPAM"

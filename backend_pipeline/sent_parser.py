@@ -47,6 +47,18 @@ _MX_SMTPI_RE = re.compile(r"SMTPI-\d+\(\[?197\.26\.11\.\d{1,3}\]?\).*received", 
 TS_FMT = "%Y-%m-%d %H:%M:%S.%f"
 
 
+def _save_fes_line(j: dict, server: str, line: str) -> None:
+    entry = f"[{server}] {line.strip()}"
+    if entry not in j["audit"]["fes_lines"]:
+        j["audit"]["fes_lines"].append(entry)
+
+
+def _save_mapped_line(j: dict, server: str, line: str) -> None:
+    entry = f"[{server}] {line.strip()}"
+    if entry not in j["audit"]["mapped_lines"]:
+        j["audit"]["mapped_lines"].append(entry)
+
+
 def get_timestamp(line: str, date_str: str) -> str | None:
     match = re.search(r"(\d{2}:\d{2}:\d{2}\.\d{3})", line)
     return f"{date_str} {match.group(1)}" if match else None
@@ -66,6 +78,12 @@ def extract_recipient(line: str) -> str | None:
     if r_match:
         return r_match.group(1).strip(":").strip("<>").split(")")[-1]
     return None
+
+
+def _is_mapped_relay(ip: str) -> bool:
+    """True when the IP belongs to the internal mapped-server subnet and its last octet is a known next-hop."""
+    prefix = config.MAPPED_SERVER_IP_PREFIX
+    return bool(prefix) and ip.startswith(prefix) and ip.split(".")[-1] in NEXT_HOP_MAP
 
 
 def _mapped_outcome_line(line_lower: str) -> bool:
@@ -145,68 +163,63 @@ def process_logs(target_date: str) -> None:
 
                     bump_journey_ts_window(j, ts)
 
-                    fes_keywords = [
-                        "queue",
-                        "dequeuer",
-                        "got:250",
-                        "relayed",
-                        "failed",
-                        "rejected",
-                        "discarded",
-                        "delivered",
-                        "mailbox",
-                        "account",
-                        "smtpi",
-                        "extfilter",
-                    ]
-                    if any(x in line_lower for x in fes_keywords):
-                        j["audit"]["fes_lines"].append(f"[{server_name}] {line.strip()}")
-
                     current_recipient = extract_recipient(line)
-                    if "dequeuer" in line_lower and current_recipient:
-                        if current_recipient not in j["recipients"]:
-                            j["recipients"].append(current_recipient)
 
-                    if j["status"] not in ["Success", "Pending"]:
-                        pass
-                    elif "discarded" in line_lower or "delivered via automatic rules" in line_lower:
-                        j["status"] = "Discarded"
-                    elif any(x in line_lower for x in ["failed:", "rejected"]):
-                        j["status"] = "Failed"
-                        code_match = re.search(r"says:\\n\s*(\d{3})", line)
-                        if not code_match:
-                            error_part = line.split("failed:")[-1] if "failed:" in line else line
-                            code_match = re.search(r"\b([45]\d{2})\b", error_part)
-                        j["error_details"] = {
-                            "code": code_match.group(1) if code_match else "N/A",
-                            "full_message": line.split("failed:")[-1].strip()
-                            if "failed:" in line
-                            else line.strip(),
-                        }
-
-                    if any(x in line_lower for x in ["delivered to mailbox", "delivered to the user mailbox"]):
-                        if current_recipient and current_recipient not in j["successful_recipients"]:
-                            j["successful_recipients"].append(current_recipient)
-
-                    elif "relayed: relayed via" in line_lower:
-                        ip_match = re.search(r"relayed via \[?(\d+\.\d+\.\d+\.\d+)\]?", line)
-                        if ip_match:
-                            if ip_match.group(1).split(".")[-1] not in NEXT_HOP_MAP:
-                                if current_recipient and current_recipient not in j["successful_recipients"]:
-                                    j["successful_recipients"].append(current_recipient)
-
+                    # --- Sender ---
                     if "queue" in line_lower:
                         s_match = re.search(r"from <([^>]*)>", line)
                         if s_match:
                             j["sender"] = s_match.group(1).strip() or "NULL"
+                            _save_fes_line(j, server_name, line)
 
+                    # --- Recipient ---
+                    if "dequeuer" in line_lower and current_recipient:
+                        if current_recipient not in j["recipients"]:
+                            j["recipients"].append(current_recipient)
+                        _save_fes_line(j, server_name, line)
+
+                    # --- Status: Discarded / Failed ---
+                    if j["status"] in ["Success", "Pending"]:
+                        if "discarded" in line_lower or "delivered via automatic rules" in line_lower:
+                            j["status"] = "Discarded"
+                            _save_fes_line(j, server_name, line)
+                        elif any(x in line_lower for x in ["failed:", "rejected"]):
+                            j["status"] = "Failed"
+                            code_match = re.search(r"says:\\n\s*(\d{3})", line)
+                            if not code_match:
+                                error_part = line.split("failed:")[-1] if "failed:" in line else line
+                                code_match = re.search(r"\b([45]\d{2})\b", error_part)
+                            j["error_details"] = {
+                                "code": code_match.group(1) if code_match else "N/A",
+                                "full_message": line.split("failed:")[-1].strip()
+                                if "failed:" in line
+                                else line.strip(),
+                            }
+                            _save_fes_line(j, server_name, line)
+
+                    # --- Successful delivery on FES (local mailbox or direct relay) ---
+                    if any(x in line_lower for x in ["delivered to mailbox", "delivered to the user mailbox"]):
+                        if current_recipient and current_recipient not in j["successful_recipients"]:
+                            j["successful_recipients"].append(current_recipient)
+                        _save_fes_line(j, server_name, line)
+
+                    elif "relayed: relayed via" in line_lower:
+                        ip_match = re.search(r"relayed via \[?(\d+\.\d+\.\d+\.\d+)\]?", line)
+                        if ip_match:
+                            if not _is_mapped_relay(ip_match.group(1)):
+                                if current_recipient and current_recipient not in j["successful_recipients"]:
+                                    j["successful_recipients"].append(current_recipient)
+                            _save_fes_line(j, server_name, line)
+
+                    # --- RelayIp / DeliveryId (got:250 → next-hop = Pending; external = Success) ---
                     if "sent " in line_lower and "->" in line_lower and "got:250" in line_lower:
                         ip_match = re.search(r"-> \[?(\d+\.\d+\.\d+\.\d+)\]?:\d+", line)
                         if ip_match:
                             rip = ip_match.group(1)
                             j["relayIp"] = rip
+                            _save_fes_line(j, server_name, line)
 
-                            if rip.split(".")[-1] in NEXT_HOP_MAP:
+                            if _is_mapped_relay(rip):
                                 j["status"] = "Pending"
                                 d_match = re.search(r"got:250 (\d{5,})", line)
                                 if d_match:
@@ -233,27 +246,13 @@ def process_logs(target_date: str) -> None:
                         qid = delivery_lookup[id_match.group(1)]
                         j = journeys[qid]
 
-                        mapped_keywords = [
-                            "queue",
-                            "dequeuer",
-                            "kaspersky",
-                            "extfilter",
-                            "delivered",
-                            "relayed",
-                            "failed",
-                            "rejected",
-                            "discarded",
-                            "got:250",
-                        ]
-                        if any(x in line_lower for x in mapped_keywords):
-                            j["audit"]["mapped_lines"].append(f"[{m_dir}] {line.strip()}")
-
                         if _mapped_outcome_line(line_lower) and m_dir not in j["serverPath"]:
                             j["serverPath"].append(m_dir)
 
                         ts = get_timestamp(line, file_date)
                         bump_journey_ts_window(j, ts)
 
+                        # --- Kaspersky result line ---
                         if "extfilter(kaspersky)" in line_lower:
                             spam_m = re.search(r"X-KAS-Status: (KAS_STATUS_\w+)", line)
                             if spam_m:
@@ -265,17 +264,22 @@ def process_logs(target_date: str) -> None:
                             if level_m:
                                 xn = level_m.group(1).strip().count("X")
                                 j["kaspersky_level"] = max(int(j.get("kaspersky_level") or 0), xn)
+                            _save_mapped_line(j, m_dir, line)
 
                         current_recipient = extract_recipient(line)
 
+                        # --- Delivery outcome lines ---
                         if any(x in line_lower for x in ["2.0.0 ok", "delivered", "relayed via", "batch relayed"]):
                             j["error_details"] = None
                             if current_recipient and current_recipient not in j["successful_recipients"]:
                                 j["successful_recipients"].append(current_recipient)
+                            _save_mapped_line(j, m_dir, line)
                         elif "discarded" in line_lower:
                             j["status"] = "Discarded"
+                            _save_mapped_line(j, m_dir, line)
                         elif any(x in line_lower for x in ["failed:", "rejected"]):
                             j["status"] = "Failed"
+                            _save_mapped_line(j, m_dir, line)
 
     actions: list[dict] = []
     mx_filtered = 0

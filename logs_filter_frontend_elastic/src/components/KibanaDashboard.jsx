@@ -26,20 +26,12 @@ function buildIframeSrc({ baseUrl, time, refreshInterval }) {
   return `${beforeQuery}?${params.toString()}`;
 }
 
-function KibanaEmbedStatic({ src }) {
-  return (
-    <div className="w-full h-full min-h-0 flex flex-col bg-white overflow-hidden">
-      <iframe title="Kibana dashboard" src={src} className="w-full flex-1 min-h-0 border-0" />
-    </div>
-  );
-}
-
-function KibanaDashboardWithToolbar() {
+function KibanaDashboardWithToolbar({ baseUrl = KIBANA_DASHBOARD_N3_BASE_URL }) {
   const [timeMode, setTimeMode] = useState('last30d'); // last7d | last30d | last90d | custom
   const [customRange, setCustomRange] = useState([null, null]);
   const [customFrom, customTo] = customRange;
   const [liveMode, setLiveMode] = useState(false);
-  const [iframeSrc, setIframeSrc] = useState(KIBANA_DASHBOARD_N3_BASE_URL);
+  const [iframeSrc, setIframeSrc] = useState(baseUrl);
 
   const quickRanges = useMemo(
     () => [
@@ -68,13 +60,9 @@ function KibanaDashboardWithToolbar() {
   }, [liveMode]);
 
   useEffect(() => {
-    const next = buildIframeSrc({
-      baseUrl: KIBANA_DASHBOARD_N3_BASE_URL,
-      time,
-      refreshInterval,
-    });
+    const next = buildIframeSrc({ baseUrl, time, refreshInterval });
     setIframeSrc(next);
-  }, [time, refreshInterval]);
+  }, [baseUrl, time, refreshInterval]);
 
   const baseBtn =
     'px-3 py-2 rounded-lg text-sm font-semibold border transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500';
@@ -160,11 +148,9 @@ function KibanaDashboardWithToolbar() {
 }
 
 /**
- * N1/N2: pass `embedOnlySrc` for a static full-viewport embed. N3: omit for toolbar + N3 dashboard URL.
+ * Pass `baseUrl` to use a specific dashboard URL with the toolbar (all roles).
+ * Defaults to the N3 dashboard URL.
  */
-export default function KibanaDashboard({ embedOnlySrc = null }) {
-  if (embedOnlySrc) {
-    return <KibanaEmbedStatic src={embedOnlySrc} />;
-  }
-  return <KibanaDashboardWithToolbar />;
+export default function KibanaDashboard({ baseUrl = KIBANA_DASHBOARD_N3_BASE_URL }) {
+  return <KibanaDashboardWithToolbar baseUrl={baseUrl} />;
 }

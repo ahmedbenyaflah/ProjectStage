@@ -157,3 +157,6 @@ Then rerun `sent_parser.py` / `received_parser.py`.
 - **401 on API:** Sign up / log in; send `Authorization: Bearer <token>`.
 - **Empty search:** Check index exists: `curl http://localhost:9200/_cat/indices?v | grep mail-journeys`.
 - **Fielddata / sort errors on old indices:** Delete old `mail-journeys-*` indices and reindex so the new template applies.
+
+check the size of index
+curl -X GET "http://localhost:9200/_cat/indices?v&s=index"

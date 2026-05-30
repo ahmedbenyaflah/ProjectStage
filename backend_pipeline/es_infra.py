@@ -4,7 +4,6 @@ Elasticsearch client factory and index-template bootstrap.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from elasticsearch import Elasticsearch
 
@@ -14,9 +13,6 @@ from journey_schema import (
     MAIL_JOURNEY_TEMPLATE_PRIORITY,
     mail_journey_index_template_body,
 )
-
-if TYPE_CHECKING:
-    pass
 
 log = logging.getLogger(__name__)
 

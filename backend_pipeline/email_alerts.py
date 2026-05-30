@@ -32,10 +32,8 @@ def _apply_dnsbl_recipients(msg: EmailMessage, recipient_emails: Iterable[str]) 
     rec = _normalize_dnsbl_recipient_emails(recipient_emails)
     if not rec:
         raise ValueError("DNSBL email requires at least one recipient (N3 subscriber).")
-    if len(rec) == 1:
-        msg["To"] = rec[0]
-    else:
-        msg["To"] = rec[0]
+    msg["To"] = rec[0]
+    if len(rec) > 1:
         msg["Bcc"] = ", ".join(rec[1:])
     return rec
 

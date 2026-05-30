@@ -226,8 +226,8 @@ export default function DetailsPanel({ log }) {
         )}
       </div>
 
-      {/* REJECTION INFO */}
-      {isRejected && (
+      {/* REJECTION INFO — sent mail only */}
+      {isRejected && !isReceived && (
         <div className="bg-red-50 border border-red-200 p-3 rounded-md space-y-2 mb-4">
           <div className="flex items-center gap-2">
             {!isLongErrorMessage && (
@@ -260,6 +260,13 @@ export default function DetailsPanel({ log }) {
               <p className="mt-1"><strong>Recommendation:</strong> {errorExplanation.action}</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Rejection message for received — raw message only, no error code card */}
+      {isRejected && isReceived && baseErrorMessage && (
+        <div className="bg-red-50 border border-red-200 p-3 rounded-md mb-4">
+          <p className="text-xs text-red-800 break-words">{baseErrorMessage}</p>
         </div>
       )}
 
@@ -310,11 +317,62 @@ export default function DetailsPanel({ log }) {
             </div>
 
             <div className="flex-1 overflow-auto p-6 space-y-6 bg-slate-50">
+
+              {/* Journey summary card — key extracted fields */}
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-gray-800 px-5 py-2 text-white font-bold text-xs uppercase tracking-widest">
+                  Extracted Fields
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-xs font-mono">
+                  <div><span className="text-gray-400 font-sans font-semibold">Queue ID</span><br />{queueId || '—'}</div>
+                  {log.delivery_id && (
+                    <div><span className="text-gray-400 font-sans font-semibold">Delivery ID</span><br />{log.delivery_id}</div>
+                  )}
+                  <div><span className="text-gray-400 font-sans font-semibold">Sender</span><br />{log.sender || '—'}</div>
+                  <div>
+                    <span className="text-gray-400 font-sans font-semibold">Recipients</span><br />
+                    {allRecipients.length === 0 && '—'}
+                    {allRecipients.map((r) => <div key={r}>{r}</div>)}
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-sans font-semibold">Status</span><br />
+                    <span className={
+                      log.status === 'Success' ? 'text-green-700 font-bold' :
+                      log.status === 'Rejected' || log.status === 'Failed' ? 'text-red-700 font-bold' :
+                      log.status === 'Discarded' ? 'text-orange-700 font-bold' :
+                      'text-gray-700'
+                    }>{log.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-sans font-semibold">Kaspersky Spam</span><br />
+                    <span className={log.kasperskySpam === 'KAS_STATUS_SPAM' ? 'text-red-700 font-bold' : 'text-green-700'}>
+                      {log.kasperskySpam || 'KAS_STATUS_NOT_SPAM'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 font-sans font-semibold">Kaspersky Virus</span><br />
+                    <span className={(log.kasperskyVirus || 'CLEAN') !== 'CLEAN' ? 'text-red-700 font-bold' : 'text-green-700'}>
+                      {log.kasperskyVirus || 'CLEAN'}
+                    </span>
+                  </div>
+                  {log.server && (
+                    <div><span className="text-gray-400 font-sans font-semibold">Relay IP</span><br />{log.server}</div>
+                  )}
+                  {isRejected && !isReceived && effectiveErrorCode && (
+                    <div>
+                      <span className="text-gray-400 font-sans font-semibold">Error Code</span><br />
+                      <span className="text-red-700 font-bold">{effectiveErrorCode}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* For sent mail this is FES lines; for received mail this is MX lines (normalised) */}
               {auditFesLines.length > 0 && (
                 <div className="bg-white border border-orange-200 rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-orange-600 px-5 py-2 text-white font-bold text-xs uppercase tracking-widest">
-                    {isReceived ? 'Reception Server (MX)' : 'Front-End Server (FES)'}
+                  <div className="bg-orange-600 px-5 py-2 text-white font-bold text-xs uppercase tracking-widest flex justify-between items-center">
+                    <span>{isReceived ? 'Reception Server (MX)' : 'Front-End Server (FES)'}</span>
+                    <span className="text-orange-200 font-normal">{auditFesLines.length} line{auditFesLines.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="p-4 bg-white overflow-x-auto">
                     <pre className="font-mono text-[12px] text-gray-800 leading-relaxed min-w-max">
@@ -327,8 +385,9 @@ export default function DetailsPanel({ log }) {
               {/* Downstream / mapped lines (sent mails only; absent for received) */}
               {auditMappedLines.length > 0 && (
                 <div className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-blue-600 px-5 py-2 text-white font-bold text-xs uppercase tracking-widest">
-                    Internal Mapped Servers
+                  <div className="bg-blue-600 px-5 py-2 text-white font-bold text-xs uppercase tracking-widest flex justify-between items-center">
+                    <span>Internal Mapped Servers</span>
+                    <span className="text-blue-200 font-normal">{auditMappedLines.length} line{auditMappedLines.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div className="p-4 bg-white overflow-x-auto">
                     <pre className="font-mono text-[12px] text-gray-800 leading-relaxed min-w-max">

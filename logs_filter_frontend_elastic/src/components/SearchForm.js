@@ -218,7 +218,7 @@ export default function SearchForm({ onSearch, onClear }) {
           wrapperClassName="flex-1 min-w-0"
         />
         <ClockTimePicker
-          label={`End time (optional, ≤${MAX_TIME_RANGE_HOURS}h; empty or 00:00 → end of day; if end < start, end is next day)`}
+          label={`End time`}
           value={endTime}
           onChange={setEndTime}
           id="end-time"
