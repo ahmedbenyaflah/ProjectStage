@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Any
 
 from auth import hash_password
@@ -27,7 +28,7 @@ def list_users() -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
         for r in rows:
             uid, email, role, created_at = r
-            ca = created_at.isoformat() if hasattr(created_at, "isoformat") else str(created_at)
+            ca = (created_at + timedelta(hours=1)).isoformat() if hasattr(created_at, "isoformat") else str(created_at)
             out.append({"id": uid, "email": email, "role": role, "created_at": ca})
         return out
     finally:

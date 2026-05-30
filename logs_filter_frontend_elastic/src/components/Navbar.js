@@ -309,7 +309,7 @@ export default function Navbar() {
                         <td className="px-4 py-2 font-mono text-gray-900">{r.ip || '—'}</td>
                         <td className="px-4 py-2 text-gray-800">{r.blacklist || '—'}</td>
                         <td className="px-4 py-2 text-gray-700">
-                          {r['@timestamp'] ? new Date(r['@timestamp']).toLocaleString() : '—'}
+                          {r['@timestamp'] ? new Date(new Date(r['@timestamp']).getTime() + 3600000).toLocaleString() : '—'}
                         </td>
                       </tr>
                     ))}
